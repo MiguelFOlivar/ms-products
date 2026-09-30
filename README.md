@@ -129,3 +129,63 @@ Base de datos: SQL Server
 Autenticación: JWT
 
 Comunicación: REST APIs
+---
+
+## 🚀 Instalación y ejecución
+
+1. **Clonar el repositorio**
+   ```bash
+   git clone https://github.com/MiguelFOlivar/ms-products.git
+   cd ms-products
+   
+Importar el proyecto en IntelliJ IDEA
+
+Abrir IntelliJ → File → Open → seleccionar carpeta ms-products.
+
+Esperar a que se descarguen las dependencias de Maven.
+
+Configurar la base de datos
+
+Editar src/main/resources/application.properties con tus credenciales de SQL Server:
+```
+  spring.datasource.url=jdbc:sqlserver://localhost:1433;databaseName=ProductsDB
+  spring.datasource.username=sa
+  spring.datasource.password=TuPassword
+  spring.jpa.hibernate.ddl-auto=none
+  spring.jpa.show-sql=true
+```
+Ejecutar el script de creación de tablas:
+```
+  sqlcmd -S localhost -U sa -P <password> -i db/products_schema.sql
+```
+Levantar el microservicio
+
+Desde IntelliJ: botón Run en la clase principal.
+
+O desde consola:
+```
+  mvn spring-boot:run
+```
+Probar los endpoints
+
+GET http://localhost:8080/api/products
+
+POST http://localhost:8080/api/products
+
+PUT http://localhost:8080/api/products/{id}
+
+DELETE http://localhost:8080/api/products/{id}
+
+```
+ms-products/
+├── README.md
+├── pom.xml
+├── src/
+│   └── main/
+│       ├── java/                # Código fuente
+│       └── resources/
+│           └── application.properties
+├── db/
+│   └── products_schema.sql      # Script SQL Server
+└── docs/                        # Documentación adicional
+```
