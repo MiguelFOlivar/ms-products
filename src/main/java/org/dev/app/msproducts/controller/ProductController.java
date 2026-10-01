@@ -8,6 +8,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
 
@@ -23,4 +24,9 @@ public class ProductController {
         return ResponseEntity.ok(service.getAllProducts());
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('CLIENT','ADMIN')")
+    public ResponseEntity<ProductResponseDTO> getProductById(@PathVariable Integer id) {
+        return ResponseEntity.ok(service.getProductById(id));
+    }
 }
