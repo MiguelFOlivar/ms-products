@@ -7,6 +7,7 @@ import org.dev.app.msproducts.model.Product;
 import org.dev.app.msproducts.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.dev.app.msproducts.exceptions.ProductNotFoundException;
 
 import java.util.List;
 
@@ -57,8 +58,17 @@ public class ProductServiceImpl implements IProductService{
 
     @Override
     public ProductResponseDTO getProductById(Integer id) {
-        // TO DO
-        return null;
+        Product p = repository.findById(id)
+                .orElseThrow(() -> new ProductNotFoundException("No se encontró el producto con id " + id));
+
+        return new ProductResponseDTO(
+                p.getId(),
+                p.getName(),
+                p.getDescription(),
+                p.getPrice(),
+                p.getStock(),
+                p.getActive()
+        );
     }
 
     @Override
