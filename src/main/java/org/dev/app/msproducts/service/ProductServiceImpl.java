@@ -37,9 +37,22 @@ public class ProductServiceImpl implements IProductService{
 
     @Override
     public ProductResponseDTO saveProduct(ProductRequestDTO dto) {
+        Product product = new Product();
+        product.setName(dto.getName());
+        product.setPrice(dto.getPrice());
+        product.setDescription(dto.getDescription());
+        product.setStock(dto.getStock());
 
-        // TO DO
-        return null;
+
+        product = repository.save(product);
+        return new ProductResponseDTO(
+                product.getId(),
+                product.getName(),
+                product.getDescription(),
+                product.getPrice(),
+                product.getStock(),
+                product.getActive()
+        );
     }
 
 
