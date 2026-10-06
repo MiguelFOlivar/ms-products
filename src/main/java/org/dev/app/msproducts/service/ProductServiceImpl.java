@@ -31,7 +31,7 @@ public class ProductServiceImpl implements IProductService{
                         p.getPrice(),
                         p.getStock(),
                         p.getActive()
-                ))
+                )).peek(p -> System.out.println(p))
                 .toList();
     }
 
