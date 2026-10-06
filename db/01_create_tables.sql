@@ -1,20 +1,23 @@
--- -------------------------------------------------------------------------
--- 01_create_tables.sql
--- Base de datos y tablas (MySQL Workbench)
--- -------------------------------------------------------------------------
-CREATE DATABASE IF NOT EXISTS products_MS
+CREATE DATABASE IF NOT EXISTS ecommerce
     CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-USE products_MS;
+USE Ecommerce;
 
+CREATE TABLE IF NOT EXISTS categories (
+id INT PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(100) NOT NULL UNIQUE,
+    active TINYINT(1) NOT NULL DEFAULT 1
+    );
 
--- 2. Tabla de Products
 CREATE TABLE IF NOT EXISTS products (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(150) NOT NULL,
+ id INT PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(150) NOT NULL,
     description TEXT NULL,
     price DECIMAL(10, 2) NOT NULL,
-    stock INT NOT NULL,
+    stock INT NOT NULL DEFAULT 0,
     active TINYINT(1) NOT NULL DEFAULT 1,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    category_id INT NOT NULL,
+    CONSTRAINT fk_products_category
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+    );
