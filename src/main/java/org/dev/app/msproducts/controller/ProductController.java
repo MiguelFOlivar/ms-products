@@ -1,7 +1,5 @@
 package org.dev.app.msproducts.controller;
 
-import org.dev.app.msproducts.dto.ProductRegisterRequest;
-import org.dev.app.msproducts.dto.ProductRegisterResponse;
 import org.dev.app.msproducts.dto.ProductRequestDTO;
 import org.dev.app.msproducts.dto.ProductResponseDTO;
 import org.dev.app.msproducts.service.IProductService;
