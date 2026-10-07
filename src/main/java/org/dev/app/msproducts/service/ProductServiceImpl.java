@@ -8,6 +8,8 @@ import org.dev.app.msproducts.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.dev.app.msproducts.exceptions.ProductNotFoundException;
+import org.dev.app.msproducts.exceptions.ProductAlreadyInactiveException;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -78,9 +80,16 @@ public class ProductServiceImpl implements IProductService{
     }
 
     @Override
+    @Transactional
     public void deleteProduct(Integer id) {
-        // TO DO
-
+        Product product = repository.findById(id)
+                .orElseThrow(() -> new ProductNotFoundException(
+                        "No se encontró el producto con id " + id));
+        if (Boolean.FALSE.equals(product.getActive())) {
+            throw new ProductAlreadyInactiveException("El producto ya fue retirado del catálogo");
+        }
+        product.setActive(false);
+        repository.save(product);
     }
 
 }
