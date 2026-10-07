@@ -83,4 +83,25 @@ public class ProductServiceImpl implements IProductService{
 
     }
 
+    @Override
+    public ProductResponseDTO updateStock(Integer id, Integer stock) {
+        if (stock == null || stock < 0) {
+            throw new IllegalArgumentException("El stock no puede ser negativo");
+        }
+
+        Product product = repository.findById(id)
+                .orElseThrow(() -> new ProductNotFoundException("No se encontró el producto con id " + id));
+
+        product.setStock(stock);
+        product = repository.save(product);
+
+        return new ProductResponseDTO(
+                product.getId(),
+                product.getName(),
+                product.getDescription(),
+                product.getPrice(),
+                product.getStock(),
+                product.getActive()
+        );
+    }
 }

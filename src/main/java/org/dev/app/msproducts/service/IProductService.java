@@ -10,5 +10,6 @@ public interface IProductService {
     List<ProductResponseDTO> getAllProducts();
     ProductResponseDTO getProductById(Integer id);
     ProductResponseDTO updateProduct(Integer id, ProductRequestDTO dto);
+    ProductResponseDTO updateStock(Integer id, Integer stock);
     void deleteProduct(Integer id);
 }
