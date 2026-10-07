@@ -189,3 +189,4 @@ ms-products/
 │   └── products_schema.sql      # Script SQL Server
 └── docs/                        # Documentación adicional
 ```
+   Actualización de prueba por Gerardo - rama feature/update-product 07/10/2026
