@@ -131,6 +131,36 @@ Autenticación: JWT
 Comunicación: REST APIs
 ---
 
+## 🧪 Pruebas unitarias
+
+Las pruebas unitarias del servicio de productos se encuentran en
+`src/test/java/org/dev/app/msproducts/service/ProductServiceImplTest.java`.
+Utilizan JUnit 5 para ejecutar los casos y Mockito para simular el repositorio,
+sin conectarse a una base de datos.
+
+Para ejecutar todas las pruebas desde la raíz del proyecto:
+
+```bash
+./mvnw test
+```
+
+En Windows, utiliza:
+
+```bat
+mvnw.cmd test
+```
+
+Los casos actuales comprueban:
+
+- Consulta de productos activos y respuesta cuando el catálogo está vacío.
+- Consulta por ID, tanto cuando el producto existe como cuando no se encuentra.
+- Registro de productos y verificación de los datos persistidos.
+- Retiro lógico de productos, incluyendo producto inexistente o ya inactivo.
+- Actualización de stock válida y rechazo de stock negativo o nulo, así como de
+  productos inexistentes.
+
+---
+
 ## 🚀 Instalación y ejecución
 
 1. **Clonar el repositorio**
