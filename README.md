@@ -28,11 +28,41 @@ Permite registrar, consultar, actualizar y eliminar productos, asegurando que la
 ---
 
 ## ⚙️ Arquitectura
-- **Base de datos:** `ProductsDB` (tabla `products`).
+- **Base de datos:** MySQL, esquema `ecommerce`.
 - **Comunicación:** APIs REST (JSON).
 - **Integración:**
   - **MS-Users:** validación de roles y autenticación.
   - **MS-Orders:** consulta de stock y disponibilidad antes de confirmar pedidos.
+
+---
+
+## 🗄️ Esquema de base de datos
+
+El esquema está definido en [`db/01_create_tables.sql`](db/01_create_tables.sql),
+que crea la base de datos `ecommerce` y las siguientes tablas:
+
+| Tabla | Campos y reglas principales |
+|---|---|
+| `categories` | `id` es la llave primaria autoincremental; `name` es obligatorio y único; `active` es obligatorio y vale `1` por defecto. |
+| `products` | `id` es la llave primaria autoincremental; `name`, `price`, `stock` y `category_id` son obligatorios; `description` permite `NULL`; `stock` vale `0` por defecto; `active` vale `1` por defecto; `created_at` recibe la fecha y hora actual por defecto. |
+
+Cada producto pertenece a una categoría mediante la llave foránea
+`products.category_id`, que referencia `categories.id`. Una categoría puede
+tener varios productos; la llave foránea no define eliminación en cascada.
+
+El esquema también establece `NOT NULL` en los campos obligatorios y `UNIQUE`
+para el nombre de categoría. No define restricciones `CHECK` para validar que
+el precio sea positivo o que el stock no sea negativo; estas reglas no deben
+darse por garantizadas por la base de datos.
+
+Para crear la base y las tablas en MySQL, ejecuta desde la raíz del proyecto:
+
+```bash
+mysql -u <usuario> -p < db/01_create_tables.sql
+```
+
+La configuración de conexión de la aplicación debe apuntar a la misma base de
+datos (`ecommerce`) y ser compatible con MySQL.
 
 ---
 
@@ -124,11 +154,41 @@ MS-Orders: consulta de stock y disponibilidad antes de procesar compras.
 🛠️ Tecnologías sugeridas
 Backend: Java + Spring Boot
 
-Base de datos: SQL Server
+Base de datos: MySQL
 
 Autenticación: JWT
 
 Comunicación: REST APIs
+---
+
+## 🧪 Pruebas unitarias
+
+Las pruebas unitarias del servicio de productos se encuentran en
+`src/test/java/org/dev/app/msproducts/service/ProductServiceImplTest.java`.
+Utilizan JUnit 5 para ejecutar los casos y Mockito para simular el repositorio,
+sin conectarse a una base de datos.
+
+Para ejecutar todas las pruebas desde la raíz del proyecto:
+
+```bash
+./mvnw test
+```
+
+En Windows, utiliza:
+
+```bat
+mvnw.cmd test
+```
+
+Los casos actuales comprueban:
+
+- Consulta de productos activos y respuesta cuando el catálogo está vacío.
+- Consulta por ID, tanto cuando el producto existe como cuando no se encuentra.
+- Registro de productos y verificación de los datos persistidos.
+- Retiro lógico de productos, incluyendo producto inexistente o ya inactivo.
+- Actualización de stock válida y rechazo de stock negativo o nulo, así como de
+  productos inexistentes.
+
 ---
 
 ## 🚀 Instalación y ejecución
@@ -146,17 +206,18 @@ Esperar a que se descarguen las dependencias de Maven.
 
 Configurar la base de datos
 
-Editar src/main/resources/application.properties con tus credenciales de SQL Server:
+Editar `src/main/resources/application.properties` con los datos de conexión de
+MySQL y la base `ecommerce`:
 ```
-  spring.datasource.url=jdbc:sqlserver://localhost:1433;databaseName=ProductsDB
-  spring.datasource.username=sa
+  spring.datasource.url=jdbc:mysql://localhost:3306/ecommerce
+  spring.datasource.username=<usuario>
   spring.datasource.password=TuPassword
   spring.jpa.hibernate.ddl-auto=none
   spring.jpa.show-sql=true
 ```
 Ejecutar el script de creación de tablas:
 ```
-  sqlcmd -S localhost -U sa -P <password> -i db/products_schema.sql
+  mysql -u <usuario> -p < db/01_create_tables.sql
 ```
 Levantar el microservicio
 
