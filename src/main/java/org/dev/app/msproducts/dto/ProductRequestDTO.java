@@ -7,6 +7,7 @@ public class ProductRequestDTO {
     private String description;
     private BigDecimal price;
     private Integer stock;
+    private Integer categoryId;
 
     public ProductRequestDTO() {
     }
@@ -48,5 +49,13 @@ public class ProductRequestDTO {
 
     public void setStock(Integer stock) {
         this.stock = stock;
+    }
+
+    public Integer getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(Integer categoryId) {
+        this.categoryId = categoryId;
     }
 }
