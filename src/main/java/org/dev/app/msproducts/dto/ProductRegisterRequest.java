@@ -1,15 +1,39 @@
 package org.dev.app.msproducts.dto;
 
+import jakarta.validation.constraints.*;
+
 import java.math.BigDecimal;
 
 public class ProductRegisterRequest {
+    @NotBlank(message = "El nombre es obligatorio")
     private String name;
+
     private String description;
+    @NotNull(message = "El precio es obligatorio")
+    @DecimalMin(value = "0.0", inclusive = false, message = "el precio debe ser mayor a Cero")
+    @Digits(
+            integer = 10,
+            fraction = 2,
+            message = "El formato del producto es incorrecto"
+    )
     private BigDecimal price;
+
+
+
+    @NotNull(message = "El stock es obligatorio")
+    @Min(value = 0, message = "El stock no puede ser negativo")
     private Integer stock;
     private Integer active;
     private String date;
+
+    @NotNull(message = "La categoría es obligatoria")
+    private Integer categoryId;
     private Integer id;
+    private Integer quantity;
+
+    public Integer getQuantity(){return quantity;}
+
+    public void setQuantity (Integer quantity){this.quantity = quantity;}
 
     public String getName() {
         return name;
@@ -67,5 +91,11 @@ public class ProductRegisterRequest {
         this.id = id;
     }
 
+    public Integer getCategoryId() {
+        return categoryId;
+    }
 
+    public void setCategoryId(Integer categoryId) {
+        this.categoryId = categoryId;
+    }
 }
