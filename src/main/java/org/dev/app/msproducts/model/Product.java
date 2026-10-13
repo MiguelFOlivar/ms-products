@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "Products")
 public class Product {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -31,10 +32,14 @@ public class Product {
             columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime createdAt;
 
+    @ManyToOne
+    @JoinColumn(name = "category_id", nullable = false)
+    private Category category;
+
     public Product() {
     }
 
-    public Product(Integer id, String name, String description, BigDecimal price, Integer stock, Boolean active, LocalDateTime createdAt) {
+    public Product(Integer id, String name, String description, BigDecimal price, Integer stock, Boolean active, LocalDateTime createdAt, Integer categoryId) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -98,5 +103,13 @@ public class Product {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Category getCategory() {
+        return category;
+    }
+
+    public void setCategory(Category category) {
+        this.category = category;
     }
 }

@@ -1,9 +1,13 @@
 package org.dev.app.msproducts.service;
 
+import org.dev.app.msproducts.dto.ProductRegisterRequest;
 import org.dev.app.msproducts.dto.ProductRequestDTO;
 import org.dev.app.msproducts.dto.ProductResponseDTO;
 import org.dev.app.msproducts.exceptions.NoProductsAvailableException;
+import org.dev.app.msproducts.exceptions.ProductException;
+import org.dev.app.msproducts.model.Category;
 import org.dev.app.msproducts.model.Product;
+import org.dev.app.msproducts.repository.CategoryRepository;
 import org.dev.app.msproducts.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -11,12 +15,18 @@ import org.dev.app.msproducts.exceptions.ProductNotFoundException;
 import org.dev.app.msproducts.exceptions.ProductAlreadyInactiveException;
 import org.springframework.transaction.annotation.Transactional;
 
+
+import java.awt.print.PrinterException;
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
 public class ProductServiceImpl implements IProductService{
     @Autowired
     private ProductRepository repository;
+    @Autowired
+    private CategoryRepository categoryRepository;
+
 
     @Override
     public List<ProductResponseDTO> getAllProducts() {
@@ -32,18 +42,37 @@ public class ProductServiceImpl implements IProductService{
                         p.getDescription(),
                         p.getPrice(),
                         p.getStock(),
-                        p.getActive()
+                        p.getActive(),
+                        p.getCategory().getId()
                 )).peek(p -> System.out.println(p))
                 .toList();
     }
 
     @Override
-    public ProductResponseDTO saveProduct(ProductRequestDTO dto) {
+    public ProductResponseDTO saveProduct(ProductRegisterRequest dto) {
+
+        if (dto.getName() == null || dto.getName().isBlank()){
+            throw new ProductException("El nombre del producto es obligstorio");
+        }
+
+        if (dto.getPrice() == null || dto.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ProductException("El precio debe ser mayor a cero");
+        }
+
+        if (dto.getStock() == null || dto.getStock() < 0){
+            throw new ProductException("El stock no puede ser negativo");
+        }
+
+        Category category = categoryRepository.findById(dto.getCategoryId())
+                .orElseThrow(() -> new ProductException("La categoría no existe"));
+
         Product product = new Product();
+
         product.setName(dto.getName());
         product.setPrice(dto.getPrice());
         product.setDescription(dto.getDescription());
         product.setStock(dto.getStock());
+        product.setCategory(category);
 
 
         product = repository.save(product);
@@ -53,7 +82,8 @@ public class ProductServiceImpl implements IProductService{
                 product.getDescription(),
                 product.getPrice(),
                 product.getStock(),
-                product.getActive()
+                product.getActive(),
+                product.getCategory().getId()
         );
     }
 
@@ -69,7 +99,8 @@ public class ProductServiceImpl implements IProductService{
                 p.getDescription(),
                 p.getPrice(),
                 p.getStock(),
-                p.getActive()
+                p.getActive(),
+                p.getCategory().getId()
         );
     }
 
@@ -110,7 +141,8 @@ public class ProductServiceImpl implements IProductService{
                 product.getDescription(),
                 product.getPrice(),
                 product.getStock(),
-                product.getActive()
+                product.getActive(),
+                product.getCategory().getId()
         );
     }
 }

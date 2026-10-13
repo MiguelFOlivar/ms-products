@@ -9,15 +9,17 @@ public class ProductResponseDTO {
     private BigDecimal price;
     private Integer stock;
     private Boolean active;
+    private Integer categoryId;
 
     public ProductResponseDTO(Integer id, String name, String description,
-                              BigDecimal price, Integer stock, Boolean active) {
+                              BigDecimal price, Integer stock, Boolean active, Integer categoryId) {
         this.id = id;
         this.name = name;
         this.description = description;
         this.price = price;
         this.stock = stock;
         this.active = active;
+        this.categoryId = categoryId;
     }
 
     public Integer getId() {
@@ -67,4 +69,8 @@ public class ProductResponseDTO {
     public void setActive(Boolean active) {
         this.active = active;
     }
+
+    public void setCategoryId(Integer categoryId){this.categoryId= categoryId;}
+
+    public Integer getCategoryId(){return categoryId;}
 }

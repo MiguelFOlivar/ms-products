@@ -11,6 +11,7 @@ public class ProductRegisterResponse {
     private Integer active;
     private String date;
     private Integer id;
+    private Integer categoryId;
 
     public String getName() {
         return name;
@@ -66,5 +67,13 @@ public class ProductRegisterResponse {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public Integer getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(Integer categoryId) {
+        this.categoryId = categoryId;
     }
 }
