@@ -38,14 +38,15 @@ class ProductControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /api/products/{id} debe retornar 200 OK y mensaje cuando se retira exitosamente")
+    @DisplayName("DELETE /api/products con header 'id' debe retornar 200 OK y mensaje cuando se retira exitosamente")
     void deleteProduct_Success() throws Exception {
         // Arrange
         Integer productId = 1;
         doNothing().when(service).deleteProduct(productId);
 
         // Act & Assert
-        mockMvc.perform(delete("/api/products/{id}", productId))
+        mockMvc.perform(delete("/api/products")
+                        .header("id", productId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Producto retirado del catálogo con éxito."));
 
@@ -53,7 +54,7 @@ class ProductControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /api/products/{id} debe retornar 404 NOT FOUND cuando el producto no existe")
+    @DisplayName("DELETE /api/products con header 'id' debe retornar 404 NOT FOUND cuando el producto no existe")
     void deleteProduct_NotFound() throws Exception {
         // Arrange
         Integer productId = 99;
@@ -61,7 +62,8 @@ class ProductControllerTest {
                 .when(service).deleteProduct(productId);
 
         // Act & Assert
-        mockMvc.perform(delete("/api/products/{id}", productId))
+        mockMvc.perform(delete("/api/products")
+                        .header("id", productId))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("No se encontró el producto con id " + productId));
 
@@ -69,7 +71,7 @@ class ProductControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /api/products/{id} debe retornar 409 CONFLICT cuando el producto ya estaba inactivo")
+    @DisplayName("DELETE /api/products con header 'id' debe retornar 409 CONFLICT cuando el producto ya estaba inactivo")
     void deleteProduct_AlreadyInactive() throws Exception {
         // Arrange
         Integer productId = 1;
@@ -77,7 +79,8 @@ class ProductControllerTest {
                 .when(service).deleteProduct(productId);
 
         // Act & Assert
-        mockMvc.perform(delete("/api/products/{id}", productId))
+        mockMvc.perform(delete("/api/products")
+                        .header("id", productId))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("El producto ya fue retirado del catálogo"));
 
