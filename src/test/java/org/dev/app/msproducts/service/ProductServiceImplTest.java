@@ -1,6 +1,7 @@
 package org.dev.app.msproducts.service;
 
 import org.dev.app.msproducts.dto.ProductRegisterRequest;
+import org.dev.app.msproducts.dto.ProductRequestDTO;
 import org.dev.app.msproducts.dto.ProductResponseDTO;
 import org.dev.app.msproducts.exceptions.NoProductsAvailableException;
 import org.dev.app.msproducts.exceptions.ProductAlreadyInactiveException;
@@ -32,8 +33,6 @@ class ProductServiceImplTest {
 
     @Mock
     private ProductRepository repository;
-    @Mock
-    private CategoryRepository categoryRepository;
 
     @Mock
     private CategoryRepository categoryRepository;
