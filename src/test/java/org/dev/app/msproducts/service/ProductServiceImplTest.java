@@ -4,6 +4,7 @@ import org.dev.app.msproducts.dto.ProductRegisterRequest;
 import org.dev.app.msproducts.dto.ProductResponseDTO;
 import org.dev.app.msproducts.exceptions.NoProductsAvailableException;
 import org.dev.app.msproducts.exceptions.ProductAlreadyInactiveException;
+import org.dev.app.msproducts.exceptions.ProductException;
 import org.dev.app.msproducts.exceptions.ProductNotFoundException;
 import org.dev.app.msproducts.model.Category;
 import org.dev.app.msproducts.model.Product;
@@ -19,20 +20,20 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class ProductServiceImplTest {
 
     @Mock
     private ProductRepository repository;
+    @Mock
+    private CategoryRepository categoryRepository;
 
     @Mock
     private CategoryRepository categoryRepository;
@@ -190,5 +191,48 @@ class ProductServiceImplTest {
         product.setActive(active);
         product.setCategory(category);
         return product;
+    }
+
+    @Test
+    void updateProductThrowsWhenProductDoesNotExist(){
+        Integer productId = 999;
+        ProductRequestDTO request = new ProductRequestDTO();
+
+        //Simulamos que la base de datos regresa vacío
+        when(repository.findById(productId)).thenReturn(Optional.empty());
+
+        //Verificamos que al ejecutar, lanze ProductNotFoundException
+        assertThrows(ProductNotFoundException.class, () -> service.updateProduct(productId, request));
+
+        verify(repository, never()).save(any(Product.class));
+    }
+
+
+    @Test
+    void updateProductSavesAndReturnsUpdatedProduc() {
+        Integer productId = 1;
+        Integer categoryId = 10;
+
+        ProductRequestDTO request = new ProductRequestDTO();
+        request.setName("Laptop Gamer Actualizada");
+        request.setDescription("Nueva descripción");
+        request.setPrice(new BigDecimal("25000.00"));
+        request.setStock(15);
+        request.setCategoryId(categoryId);
+
+        Product productoExistente = createProduct(productId, true, 5);
+
+        Category categoriaExistente = new Category();
+        categoriaExistente.setId(categoryId);
+
+
+        when(repository.findById(productId)).thenReturn(Optional.of(productoExistente));
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(categoriaExistente));
+        when(repository.save(any(Product.class))).thenReturn(productoExistente);
+
+        ProductResponseDTO resultado = service.updateProduct(productId, request);
+        assertNotNull(resultado);
+        assertEquals("Laptop Gamer Actualizada", resultado.getName());
+        verify(repository, times(1)).save(any(Product.class));
     }
 }

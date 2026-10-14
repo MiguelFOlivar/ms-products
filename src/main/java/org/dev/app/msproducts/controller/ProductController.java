@@ -54,4 +54,11 @@ public class ProductController {
                                                           @RequestParam Integer stock) {
         return ResponseEntity.ok(service.updateStock(id, stock));
     }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ProductResponseDTO> updateProduct(@PathVariable Integer id,
+                                                            @Valid @RequestBody ProductRequestDTO request){
+        return ResponseEntity.ok(service.updateProduct(id, request));
+    }
 }
