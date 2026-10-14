@@ -35,9 +35,9 @@ public class ProductController {
     public ResponseEntity<ProductResponseDTO> getProductById(@PathVariable Integer id) {
         return ResponseEntity.ok(service.getProductById(id));
     }
-    @DeleteMapping("/{id}")
+    @DeleteMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, String>> deleteProduct(@PathVariable Integer id) {
+    public ResponseEntity<Map<String, String>> deleteProduct(@RequestHeader("id") Integer id) {
         service.deleteProduct(id);
         return ResponseEntity.ok(Map.of("message", "Producto retirado del catálogo con éxito."));
     }
