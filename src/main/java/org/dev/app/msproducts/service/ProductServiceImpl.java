@@ -1,9 +1,13 @@
 package org.dev.app.msproducts.service;
 
+import org.dev.app.msproducts.dto.ProductRegisterRequest;
 import org.dev.app.msproducts.dto.ProductRequestDTO;
 import org.dev.app.msproducts.dto.ProductResponseDTO;
 import org.dev.app.msproducts.exceptions.NoProductsAvailableException;
+import org.dev.app.msproducts.exceptions.ProductException;
+import org.dev.app.msproducts.model.Category;
 import org.dev.app.msproducts.model.Product;
+import org.dev.app.msproducts.repository.CategoryRepository;
 import org.dev.app.msproducts.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -11,12 +15,18 @@ import org.dev.app.msproducts.exceptions.ProductNotFoundException;
 import org.dev.app.msproducts.exceptions.ProductAlreadyInactiveException;
 import org.springframework.transaction.annotation.Transactional;
 
+
+import java.awt.print.PrinterException;
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
 public class ProductServiceImpl implements IProductService{
     @Autowired
     private ProductRepository repository;
+    @Autowired
+    private CategoryRepository categoryRepository;
+
 
     @Override
     public List<ProductResponseDTO> getAllProducts() {
@@ -32,18 +42,37 @@ public class ProductServiceImpl implements IProductService{
                         p.getDescription(),
                         p.getPrice(),
                         p.getStock(),
-                        p.getActive()
-                ))
+                        p.getActive(),
+                        p.getCategory().getId()
+                )).peek(p -> System.out.println(p))
                 .toList();
     }
 
     @Override
-    public ProductResponseDTO saveProduct(ProductRequestDTO dto) {
+    public ProductResponseDTO saveProduct(ProductRegisterRequest dto) {
+
+        if (dto.getName() == null || dto.getName().isBlank()){
+            throw new ProductException("El nombre del producto es obligstorio");
+        }
+
+        if (dto.getPrice() == null || dto.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ProductException("El precio debe ser mayor a cero");
+        }
+
+        if (dto.getStock() == null || dto.getStock() < 0){
+            throw new ProductException("El stock no puede ser negativo");
+        }
+
+        Category category = categoryRepository.findById(dto.getCategoryId())
+                .orElseThrow(() -> new ProductException("La categoría no existe"));
+
         Product product = new Product();
+
         product.setName(dto.getName());
         product.setPrice(dto.getPrice());
         product.setDescription(dto.getDescription());
         product.setStock(dto.getStock());
+        product.setCategory(category);
 
 
         product = repository.save(product);
@@ -53,7 +82,8 @@ public class ProductServiceImpl implements IProductService{
                 product.getDescription(),
                 product.getPrice(),
                 product.getStock(),
-                product.getActive()
+                product.getActive(),
+                product.getCategory().getId()
         );
     }
 
@@ -69,7 +99,8 @@ public class ProductServiceImpl implements IProductService{
                 p.getDescription(),
                 p.getPrice(),
                 p.getStock(),
-                p.getActive()
+                p.getActive(),
+                p.getCategory().getId()
         );
     }
 
@@ -79,34 +110,39 @@ public class ProductServiceImpl implements IProductService{
         return null;
     }
 
-    /**
-     * Aplica la baja lógica a un producto cambiando su campo 'active' a false.
-     * 
-     * @Override: Implementa la definición del método en IProductService.
-     * @Transactional: Garantiza que la operación sobre la base de datos sea atómica; si ocurre un error se hace rollback.
-     * 
-     * @param id Identificador único del producto a retirar.
-     * @throws ProductNotFoundException Si el producto no existe en la base de datos (HTTP 404).
-     * @throws ProductAlreadyInactiveException Si el producto ya se encontraba inactivo previamente (HTTP 409).
-     */
     @Override
     @Transactional
     public void deleteProduct(Integer id) {
-        // 1. Buscamos el producto por su ID en el repositorio; si no existe lanzamos excepción controlada
         Product product = repository.findById(id)
                 .orElseThrow(() -> new ProductNotFoundException(
                         "No se encontró el producto con id " + id));
-
-        // 2. Validación de regla de negocio: si ya está dado de baja (active == false), evitamos operaciones redundantes
         if (Boolean.FALSE.equals(product.getActive())) {
             throw new ProductAlreadyInactiveException("El producto ya fue retirado del catálogo");
         }
-
-        // 3. Baja lógica: marcamos el producto como inactivo sin eliminar el registro físico de la base de datos
         product.setActive(false);
-
-        // 4. Persistimos el cambio de estado en la base de datos
         repository.save(product);
     }
 
+    @Override
+    public ProductResponseDTO updateStock(Integer id, Integer stock) {
+        if (stock == null || stock < 0) {
+            throw new IllegalArgumentException("El stock no puede ser negativo");
+        }
+
+        Product product = repository.findById(id)
+                .orElseThrow(() -> new ProductNotFoundException("No se encontró el producto con id " + id));
+
+        product.setStock(stock);
+        product = repository.save(product);
+
+        return new ProductResponseDTO(
+                product.getId(),
+                product.getName(),
+                product.getDescription(),
+                product.getPrice(),
+                product.getStock(),
+                product.getActive(),
+                product.getCategory().getId()
+        );
+    }
 }
