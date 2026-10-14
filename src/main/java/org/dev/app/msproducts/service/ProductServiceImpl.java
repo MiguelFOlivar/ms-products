@@ -79,16 +79,33 @@ public class ProductServiceImpl implements IProductService{
         return null;
     }
 
+    /**
+     * Aplica la baja lógica a un producto cambiando su campo 'active' a false.
+     * 
+     * @Override: Implementa la definición del método en IProductService.
+     * @Transactional: Garantiza que la operación sobre la base de datos sea atómica; si ocurre un error se hace rollback.
+     * 
+     * @param id Identificador único del producto a retirar.
+     * @throws ProductNotFoundException Si el producto no existe en la base de datos (HTTP 404).
+     * @throws ProductAlreadyInactiveException Si el producto ya se encontraba inactivo previamente (HTTP 409).
+     */
     @Override
     @Transactional
     public void deleteProduct(Integer id) {
+        // 1. Buscamos el producto por su ID en el repositorio; si no existe lanzamos excepción controlada
         Product product = repository.findById(id)
                 .orElseThrow(() -> new ProductNotFoundException(
                         "No se encontró el producto con id " + id));
+
+        // 2. Validación de regla de negocio: si ya está dado de baja (active == false), evitamos operaciones redundantes
         if (Boolean.FALSE.equals(product.getActive())) {
             throw new ProductAlreadyInactiveException("El producto ya fue retirado del catálogo");
         }
+
+        // 3. Baja lógica: marcamos el producto como inactivo sin eliminar el registro físico de la base de datos
         product.setActive(false);
+
+        // 4. Persistimos el cambio de estado en la base de datos
         repository.save(product);
     }
 
