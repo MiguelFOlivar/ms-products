@@ -57,4 +57,19 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST)
                 .body(response);
     }
+
+    @ExceptionHandler(ProductException.class)
+    public ResponseEntity<Map<String, Object>> handleProductException(
+            ProductException ex) {
+
+        Map<String, Object> response = Map.of(
+                "status", HttpStatus.BAD_REQUEST.value(),
+                "error", "Solicitud inválida",
+                "message", ex.getMessage()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
 }
