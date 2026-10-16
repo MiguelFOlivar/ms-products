@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.awt.print.PrinterException;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -45,6 +46,24 @@ public class ProductServiceImpl implements IProductService{
                         p.getActive(),
                         p.getCategory().getId()
                 )).peek(p -> System.out.println(p))
+                .toList();
+    }
+    @Override
+    public List<ProductResponseDTO> getInactiveProducts() {
+        List<Product> inactives = repository.findByActiveFalse();
+        if (inactives.isEmpty()) {
+            throw new NoProductsAvailableException("No hay productos inactivos en el catálogo");
+        }
+        return inactives.stream()
+                .map(p -> new ProductResponseDTO(
+                        p.getId(),
+                        p.getName(),
+                        p.getDescription(),
+                        p.getPrice(),
+                        p.getStock(),
+                        p.getActive(),
+                        p.getCategory().getId()
+                ))
                 .toList();
     }
 
@@ -141,6 +160,35 @@ public class ProductServiceImpl implements IProductService{
     }
 
     @Override
+    public List<ProductResponseDTO> filterProducts(Integer categoryId, ProductRequestDTO dto){
+        List<Product> products = repository.findByActiveTrue();
+
+        if(categoryId != null && categoryId > 0){
+            categoryRepository.findById(categoryId)
+                    .orElseThrow(() -> new ProductException("La categoria no existe"));
+
+            products = products.stream().filter(product -> product.getCategory().getId().equals(categoryId)).toList();
+        }
+
+        if(dto != null && dto.getName() != null && !dto.getName().isBlank()){
+            products = products.stream().filter(product -> product.getName().toLowerCase().contains(dto.getName().toLowerCase())).toList();
+        }
+
+        if(products.isEmpty()){
+            throw new NoProductsAvailableException("No se encontraron productos con los filtros");
+        }
+
+        return products.stream().map(product -> new ProductResponseDTO(
+                product.getId(),
+                product.getName(),
+                product.getDescription(),
+                product.getPrice(),
+                product.getStock(),
+                product.getActive(),
+                product.getCategory().getId()
+        )).toList();
+    }
+    @Override
     @Transactional
     public void deleteProduct(Integer id) {
         Product product = repository.findById(id)
@@ -192,4 +240,29 @@ public class ProductServiceImpl implements IProductService{
 
     }
 
+
+    @Override
+    public List<ProductResponseDTO> searchProductsByName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new ProductException("El nombre a buscar es obligatorio");
+        }
+
+        List<Product> products = repository.findByNameContainingIgnoreCase(name.trim());
+
+        if (products.isEmpty()) {
+            throw new ProductNotFoundException("No se encontró ningún producto con el nombre: " + name.trim());
+        }
+
+        return products.stream()
+                .map(p -> new ProductResponseDTO(
+                        p.getId(),
+                        p.getName(),
+                        p.getDescription(),
+                        p.getPrice(),
+                        p.getStock(),
+                        p.getActive(),
+                        p.getCategory().getId()
+                ))
+                .toList();
+    }
 }

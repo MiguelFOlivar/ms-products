@@ -9,9 +9,12 @@ import java.util.List;
 public interface IProductService {
     ProductResponseDTO saveProduct(ProductRegisterRequest dto);
     List<ProductResponseDTO> getAllProducts();
+    List<ProductResponseDTO> searchProductsByName(String name);
+    List<ProductResponseDTO> getInactiveProducts();
     ProductResponseDTO getProductById(Integer id);
     ProductResponseDTO updateProduct(Integer id, ProductRequestDTO dto);
     ProductResponseDTO updateStock(Integer id, Integer stock);
     void deleteProduct(Integer id);
     Integer getStockByProductId(Integer id);
+    List<ProductResponseDTO> filterProducts(Integer categoryId, ProductRequestDTO dto);
 }
