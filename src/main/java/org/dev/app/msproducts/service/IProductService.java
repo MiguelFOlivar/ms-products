@@ -15,4 +15,5 @@ public interface IProductService {
     ProductResponseDTO updateProduct(Integer id, ProductRequestDTO dto);
     ProductResponseDTO updateStock(Integer id, Integer stock);
     void deleteProduct(Integer id);
+    List<ProductResponseDTO> filterProducts(Integer categoryId, ProductRequestDTO dto);
 }
