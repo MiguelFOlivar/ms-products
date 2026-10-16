@@ -78,9 +78,8 @@ public class ProductServiceImpl implements IProductService{
             throw new ProductException("El precio debe ser mayor a cero");
         }
 
-        if (dto.getStock() == null || dto.getStock() < 0){
-            throw new ProductException("El stock no puede ser negativo");
-        }
+        validarReglaStock(dto.getStock());
+
 
         Category category = categoryRepository.findById(dto.getCategoryId())
                 .orElseThrow(() -> new ProductException("La categoría no existe"));
@@ -136,9 +135,7 @@ public class ProductServiceImpl implements IProductService{
             throw new ProductException("El precio debe ser mayor a cero");
         }
 
-        if (dto.getStock() == null || dto.getStock() < 0){
-            throw new ProductException("El stock no puede ser negativo");
-        }
+        validarReglaStock(dto.getStock());
 
         Category category = categoryRepository.findById(dto.getCategoryId())
                 .orElseThrow(() -> new ProductException("La categoría no existe"));
@@ -206,9 +203,7 @@ public class ProductServiceImpl implements IProductService{
 
     @Override
     public ProductResponseDTO updateStock(Integer id, Integer stock) {
-        if (stock == null || stock < 0) {
-            throw new IllegalArgumentException("El stock no puede ser negativo");
-        }
+        validarReglaStock(stock);
 
         Product product = repository.findById(id)
                 .orElseThrow(() -> new ProductNotFoundException("No se encontró el producto con id " + id));
@@ -226,6 +221,25 @@ public class ProductServiceImpl implements IProductService{
                 product.getCategory().getId()
         );
     }
+    @Override
+    public Integer getStockByProductId(Integer id) {
+        Product product = repository.findById(id)
+                .orElseThrow(() -> new ProductNotFoundException("No se encontró el producto con id " + id));
+
+        return product.getStock();
+    }
+
+    private void validarReglaStock(Integer stock) {
+        if (stock == null || stock < 0) {
+            throw new ProductException("El stock no puede ser negativo");
+        }
+
+        if (stock <= 100) {
+             throw new ProductException("El stock mínimo requerido es de 100 unidades");
+        }
+
+    }
+
 
     @Override
     public List<ProductResponseDTO> searchProductsByName(String name) {
