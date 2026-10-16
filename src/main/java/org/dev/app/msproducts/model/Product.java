@@ -1,6 +1,7 @@
 package org.dev.app.msproducts.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Min;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -23,6 +24,7 @@ public class Product {
     private BigDecimal price;
 
     @Column(nullable = false)
+    @Min(value=100,message="El stock no puede ser menor a 100")
     private Integer stock;
 
     @Column(nullable = false)
