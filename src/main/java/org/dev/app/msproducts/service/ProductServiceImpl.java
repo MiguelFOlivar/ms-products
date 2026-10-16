@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.awt.print.PrinterException;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -143,6 +144,35 @@ public class ProductServiceImpl implements IProductService{
         );
     }
 
+    @Override
+    public List<ProductResponseDTO> filterProducts(Integer categoryId, ProductRequestDTO dto){
+        List<Product> products = repository.findByActiveTrue();
+
+        if(categoryId != null && categoryId > 0){
+            categoryRepository.findById(categoryId)
+                    .orElseThrow(() -> new ProductException("La categoria no existe"));
+
+            products = products.stream().filter(product -> product.getCategory().getId().equals(categoryId)).toList();
+        }
+
+        if(dto != null && dto.getName() != null && !dto.getName().isBlank()){
+            products = products.stream().filter(product -> product.getName().toLowerCase().contains(dto.getName().toLowerCase())).toList();
+        }
+
+        if(products.isEmpty()){
+            throw new NoProductsAvailableException("No se encontraron productos con los filtros");
+        }
+
+        return products.stream().map(product -> new ProductResponseDTO(
+                product.getId(),
+                product.getName(),
+                product.getDescription(),
+                product.getPrice(),
+                product.getStock(),
+                product.getActive(),
+                product.getCategory().getId()
+        )).toList();
+    }
     @Override
     @Transactional
     public void deleteProduct(Integer id) {

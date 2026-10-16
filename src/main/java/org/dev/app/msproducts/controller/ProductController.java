@@ -61,4 +61,11 @@ public class ProductController {
                                                             @Valid @RequestBody ProductRequestDTO request){
         return ResponseEntity.ok(service.updateProduct(id, request));
     }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<ProductResponseDTO>> filterProducts(@RequestHeader("categoryId") Integer categoryId,
+                                                            @Valid @RequestBody ProductRequestDTO request){
+        return ResponseEntity.ok(service.filterProducts(categoryId, request));
+    }
 }
