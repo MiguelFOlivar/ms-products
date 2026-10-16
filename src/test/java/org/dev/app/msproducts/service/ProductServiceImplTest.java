@@ -4,6 +4,7 @@ import org.dev.app.msproducts.dto.ProductRegisterRequest;
 import org.dev.app.msproducts.dto.ProductRequestDTO;
 import org.dev.app.msproducts.dto.ProductResponseDTO;
 import org.dev.app.msproducts.exceptions.NoProductsAvailableException;
+import org.dev.app.msproducts.exceptions.ProductAlreadyExistsException;
 import org.dev.app.msproducts.exceptions.ProductAlreadyInactiveException;
 import org.dev.app.msproducts.exceptions.ProductException;
 import org.dev.app.msproducts.exceptions.ProductNotFoundException;
@@ -138,6 +139,23 @@ class ProductServiceImplTest {
         assertEquals(8, result.getStock());
         assertEquals(1, result.getCategoryId());
         verify(repository).save(any(Product.class));
+    }
+
+    @Test
+    void saveProductRejectsDuplicateNameIgnoringCase() {
+        ProductRegisterRequest request = new ProductRegisterRequest();
+        request.setName("  pRODUCTO REPETIDO  ");
+        request.setDescription("Descripción");
+        request.setPrice(new BigDecimal("29.99"));
+        request.setStock(8);
+        request.setCategoryId(1);
+        when(repository.existsByNameIgnoreCase("pRODUCTO REPETIDO")).thenReturn(true);
+
+        assertThrows(ProductAlreadyExistsException.class, () -> service.saveProduct(request));
+
+        verify(repository).existsByNameIgnoreCase("pRODUCTO REPETIDO");
+        verify(categoryRepository, never()).findById(1);
+        verify(repository, never()).save(any(Product.class));
     }
 
     @Test
