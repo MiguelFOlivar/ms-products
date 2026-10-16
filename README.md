@@ -45,10 +45,18 @@ que crea la base de datos `ecommerce` y las siguientes tablas:
 |---|---|
 | `categories` | `id` es la llave primaria autoincremental; `name` es obligatorio y único; `active` es obligatorio y vale `1` por defecto. |
 | `products` | `id` es la llave primaria autoincremental; `name`, `price`, `stock` y `category_id` son obligatorios; `description` permite `NULL`; `stock` vale `0` por defecto; `active` vale `1` por defecto; `created_at` recibe la fecha y hora actual por defecto. |
+| `promotions` | Almacena el nombre, descuento porcentual, periodo de vigencia y estado de cada promoción. El descuento debe ser mayor que `0` y no superar `50`; la fecha inicial debe ser anterior a la final. |
+| `promotion_products` | Relaciona promociones con productos; su clave primaria compuesta evita asociar dos veces el mismo producto a una promoción. |
 
 Cada producto pertenece a una categoría mediante la llave foránea
 `products.category_id`, que referencia `categories.id`. Una categoría puede
 tener varios productos; la llave foránea no define eliminación en cascada.
+
+Una promoción puede incluir varios productos mediante `promotion_products`.
+La base de datos no impide por sí sola que dos promociones vigentes se
+superpongan para el mismo producto; esa regla debe validarse al crear o
+actualizar promociones en la aplicación. El precio calculado debe redondearse
+a dos decimales para respetar la escala de `products.price`.
 
 El esquema también establece `NOT NULL` en los campos obligatorios y `UNIQUE`
 para el nombre de categoría. No define restricciones `CHECK` para validar que

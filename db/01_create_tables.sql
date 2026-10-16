@@ -1,6 +1,6 @@
 -- =====================================================
 -- Base de datos unificada: ecommerce
--- Tablas propias (nuestro equipo): categories, products
+-- Tablas propias (nuestro equipo): categories, products, promotions
 -- Tabla del otro equipo (simulada): users
 -- =====================================================
 
@@ -31,6 +31,42 @@ CREATE TABLE IF NOT EXISTS products (
     CONSTRAINT fk_products_category
     FOREIGN KEY (category_id) REFERENCES categories(id)
     ) ENGINE = InnoDB;
+
+-- -----------------------------------------------------
+-- Promociones y productos asociados
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS promotions (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(150) NOT NULL,
+    discount_percentage DECIMAL(5,2) NOT NULL,
+    starts_at DATETIME NOT NULL,
+    ends_at DATETIME NOT NULL,
+    active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+    CONSTRAINT chk_promotions_discount
+        CHECK (discount_percentage > 0 AND discount_percentage <= 50),
+    CONSTRAINT chk_promotions_dates
+        CHECK (starts_at < ends_at),
+    INDEX idx_promotions_active_dates (active, starts_at, ends_at)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS promotion_products (
+    promotion_id BIGINT NOT NULL,
+    product_id INT NOT NULL,
+
+    PRIMARY KEY (promotion_id, product_id),
+    INDEX idx_promotion_products_product (product_id),
+    CONSTRAINT fk_promotion_products_promotion
+        FOREIGN KEY (promotion_id) REFERENCES promotions(id),
+    CONSTRAINT fk_promotion_products_product
+        FOREIGN KEY (product_id) REFERENCES products(id)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------
 -- Tabla del otro equipo (simulada, no la usamos en nuestra API)
