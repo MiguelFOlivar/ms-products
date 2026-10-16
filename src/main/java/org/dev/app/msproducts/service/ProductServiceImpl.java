@@ -178,4 +178,29 @@ public class ProductServiceImpl implements IProductService{
                 product.getCategory().getId()
         );
     }
+
+    @Override
+    public List<ProductResponseDTO> searchProductsByName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new ProductException("El nombre a buscar es obligatorio");
+        }
+
+        List<Product> products = repository.findByNameContainingIgnoreCase(name.trim());
+
+        if (products.isEmpty()) {
+            throw new ProductNotFoundException("No se encontró ningún producto con el nombre: " + name.trim());
+        }
+
+        return products.stream()
+                .map(p -> new ProductResponseDTO(
+                        p.getId(),
+                        p.getName(),
+                        p.getDescription(),
+                        p.getPrice(),
+                        p.getStock(),
+                        p.getActive(),
+                        p.getCategory().getId()
+                ))
+                .toList();
+    }
 }

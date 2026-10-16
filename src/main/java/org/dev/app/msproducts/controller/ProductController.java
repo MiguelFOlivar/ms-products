@@ -61,4 +61,10 @@ public class ProductController {
                                                             @Valid @RequestBody ProductRequestDTO request){
         return ResponseEntity.ok(service.updateProduct(id, request));
     }
+
+    @GetMapping("/search")
+    @PreAuthorize("hasAnyRole('CLIENT','ADMIN')")
+    public ResponseEntity<List<ProductResponseDTO>> searchByName(@RequestParam String name) {
+        return ResponseEntity.ok(service.searchProductsByName(name));
+    }
 }
