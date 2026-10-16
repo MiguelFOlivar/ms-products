@@ -47,7 +47,15 @@ public class ProductController {
     public ResponseEntity<ProductResponseDTO> saveProduct(@Valid @RequestBody ProductRegisterRequest request){
         return ResponseEntity.ok(service.saveProduct(request));
     }
-
+    @GetMapping("/{id}/stock")
+    @PreAuthorize("hasAnyRole('CLIENT','ADMIN')")
+    public ResponseEntity<Map<String, Object>> getProductStock(@PathVariable Integer id) {
+        Integer stock = service.getStockByProductId(id);
+        return ResponseEntity.ok(Map.of(
+                "productId", id,
+                "stock", stock
+        ));
+    }
     @PatchMapping("/{id}/stock")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProductResponseDTO> updateStock(@PathVariable Integer id,
