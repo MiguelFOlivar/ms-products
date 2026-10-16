@@ -4,6 +4,7 @@ import org.dev.app.msproducts.dto.ProductRegisterRequest;
 import org.dev.app.msproducts.dto.ProductRequestDTO;
 import org.dev.app.msproducts.dto.ProductResponseDTO;
 import org.dev.app.msproducts.exceptions.NoProductsAvailableException;
+import org.dev.app.msproducts.exceptions.ProductAlreadyExistsException;
 import org.dev.app.msproducts.exceptions.ProductException;
 import org.dev.app.msproducts.model.Category;
 import org.dev.app.msproducts.model.Product;
@@ -81,12 +82,18 @@ public class ProductServiceImpl implements IProductService{
         validarReglaStock(dto.getStock());
 
 
+        String productName = dto.getName().trim();
+        if (repository.existsByNameIgnoreCase(productName)) {
+            throw new ProductAlreadyExistsException(
+                    "Ya existe un producto registrado con el nombre " + productName);
+        }
+
         Category category = categoryRepository.findById(dto.getCategoryId())
                 .orElseThrow(() -> new ProductException("La categoría no existe"));
 
         Product product = new Product();
 
-        product.setName(dto.getName());
+        product.setName(productName);
         product.setPrice(dto.getPrice());
         product.setDescription(dto.getDescription());
         product.setStock(dto.getStock());

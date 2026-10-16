@@ -24,6 +24,12 @@ public class GlobalExceptionHandler {
                 .body(Map.of("message", ex.getMessage()));
     }
 
+    @ExceptionHandler(ProductAlreadyExistsException.class)
+    public ResponseEntity<?> handleProductAlreadyExists(ProductAlreadyExistsException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
     @ExceptionHandler(NoProductsAvailableException.class)
     public ResponseEntity<?> handleNoProducts(NoProductsAvailableException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
