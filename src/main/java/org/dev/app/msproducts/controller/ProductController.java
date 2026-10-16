@@ -29,7 +29,11 @@ public class ProductController {
     public ResponseEntity<List<ProductResponseDTO>> getProducts() {
         return ResponseEntity.ok(service.getAllProducts());
     }
-
+    @GetMapping("/inactive")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<ProductResponseDTO>> getInactiveProducts() {
+        return ResponseEntity.ok(service.getInactiveProducts());
+    }
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('CLIENT','ADMIN')")
     public ResponseEntity<ProductResponseDTO> getProductById(@PathVariable Integer id) {
@@ -62,10 +66,9 @@ public class ProductController {
         return ResponseEntity.ok(service.updateProduct(id, request));
     }
 
-    @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<ProductResponseDTO>> filterProducts(@RequestHeader("categoryId") Integer categoryId,
-                                                            @Valid @RequestBody ProductRequestDTO request){
-        return ResponseEntity.ok(service.filterProducts(categoryId, request));
+    @GetMapping("/search")
+    @PreAuthorize("hasAnyRole('CLIENT','ADMIN')")
+    public ResponseEntity<List<ProductResponseDTO>> searchByName(@RequestParam String name) {
+        return ResponseEntity.ok(service.searchProductsByName(name));
     }
 }
