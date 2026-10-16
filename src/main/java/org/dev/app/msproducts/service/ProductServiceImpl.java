@@ -47,6 +47,24 @@ public class ProductServiceImpl implements IProductService{
                 )).peek(p -> System.out.println(p))
                 .toList();
     }
+    @Override
+    public List<ProductResponseDTO> getInactiveProducts() {
+        List<Product> inactives = repository.findByActiveFalse();
+        if (inactives.isEmpty()) {
+            throw new NoProductsAvailableException("No hay productos inactivos en el catálogo");
+        }
+        return inactives.stream()
+                .map(p -> new ProductResponseDTO(
+                        p.getId(),
+                        p.getName(),
+                        p.getDescription(),
+                        p.getPrice(),
+                        p.getStock(),
+                        p.getActive(),
+                        p.getCategory().getId()
+                ))
+                .toList();
+    }
 
     @Override
     public ProductResponseDTO saveProduct(ProductRegisterRequest dto) {

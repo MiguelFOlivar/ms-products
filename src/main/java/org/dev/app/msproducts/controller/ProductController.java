@@ -29,7 +29,11 @@ public class ProductController {
     public ResponseEntity<List<ProductResponseDTO>> getProducts() {
         return ResponseEntity.ok(service.getAllProducts());
     }
-
+    @GetMapping("/inactive")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<ProductResponseDTO>> getInactiveProducts() {
+        return ResponseEntity.ok(service.getInactiveProducts());
+    }
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('CLIENT','ADMIN')")
     public ResponseEntity<ProductResponseDTO> getProductById(@PathVariable Integer id) {
