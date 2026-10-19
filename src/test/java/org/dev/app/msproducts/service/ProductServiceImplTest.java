@@ -1,16 +1,7 @@
 package org.dev.app.msproducts.service;
 
-import org.dev.app.msproducts.dto.BulkPriceUpdateRequest;
-import org.dev.app.msproducts.dto.BulkPriceUpdateResponse;
-import org.dev.app.msproducts.dto.PriceUpdateItem;
-import org.dev.app.msproducts.dto.ProductRegisterRequest;
-import org.dev.app.msproducts.dto.ProductRequestDTO;
-import org.dev.app.msproducts.dto.ProductResponseDTO;
-import org.dev.app.msproducts.exceptions.NoProductsAvailableException;
-import org.dev.app.msproducts.exceptions.ProductAlreadyExistsException;
-import org.dev.app.msproducts.exceptions.ProductAlreadyInactiveException;
-import org.dev.app.msproducts.exceptions.ProductException;
-import org.dev.app.msproducts.exceptions.ProductNotFoundException;
+import org.dev.app.msproducts.dto.*;
+import org.dev.app.msproducts.exceptions.*;
 import org.dev.app.msproducts.model.Category;
 import org.dev.app.msproducts.model.Product;
 import org.dev.app.msproducts.repository.CategoryRepository;
@@ -19,9 +10,14 @@ import org.dev.app.msproducts.repository.ProductRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -250,6 +246,91 @@ class ProductServiceImplTest {
         assertNotNull(resultado);
         assertEquals("Laptop Gamer Actualizada", resultado.getName());
         verify(repository, times(1)).save(any(Product.class));
+    }
+
+    @Test
+    @DisplayName("Catálogo: Rango de precio inválido (min > max) debe lanzar InvalidPriceRangeException")
+    void catalogProducts_InvalidPriceRange_ThrowsException() {
+        ProductRequestPagDTO request = new ProductRequestPagDTO();
+        request.setMinPrice(new BigDecimal("1000.00"));
+        request.setMaxPrice(new BigDecimal("100.00"));
+        assertThrows(InvalidPriceRangeException.class, () -> service.catalogProducts(request));
+
+        verify(repository, never()).searchCatalog(any(), any(), any(), any(), any());
+    }
+    @Test
+    @DisplayName("Catálogo: Filtros combinados deben pasarse correctamente al repositorio")
+    void catalogProducts_CombinedFilters_PassesArgumentsToRepository() {
+        ProductRequestPagDTO request = new ProductRequestPagDTO();
+        request.setName("mouse");
+        request.setCategoryId(2);
+        request.setMinPrice(new BigDecimal("100.00"));
+        request.setMaxPrice(new BigDecimal("500.00"));
+        request.setPage(0);
+        request.setSize(3);
+        Product p1 = createProduct(1, true, 150);
+        Product p2 = createProduct(2, true, 150);
+        Page<Product> pageMock = new PageImpl<>(List.of(p1, p2));
+        when(repository.searchCatalog(
+                eq("mouse"),
+                eq(2),
+                eq(new BigDecimal("100.00")),
+                eq(new BigDecimal("500.00")),
+                any(Pageable.class)
+        )).thenReturn(pageMock);
+        Page<ProductResponseDTO> result = service.catalogProducts(request);
+        assertNotNull(result);
+        assertEquals(2, result.getContent().size());
+        assertEquals("Producto de prueba", result.getContent().get(0).getName());
+        verify(repository).searchCatalog(eq("mouse"), eq(2), eq(new BigDecimal("100.00")), eq(new BigDecimal("500.00")), any(Pageable.class));
+    }
+    @Test
+    @DisplayName("Catálogo: Página sin resultados debe retornar página vacía sin lanzar excepción")
+    void catalogProducts_EmptyPage_ReturnsEmptyPageWithoutThrowing() {
+        ProductRequestPagDTO request = new ProductRequestPagDTO();
+        request.setName("producto_inexistente");
+        when(repository.searchCatalog(any(), any(), any(), any(), any(Pageable.class)))
+                .thenReturn(Page.empty());
+        Page<ProductResponseDTO> result = service.catalogProducts(request);
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+        assertEquals(0, result.getTotalElements());
+    }
+    @Test
+    @DisplayName("Catálogo: Limitar la página a un máximo de 5 registros")
+    void catalogProducts_LimitSizeToMax5() {
+        ProductRequestPagDTO request = new ProductRequestPagDTO();
+        request.setSize(50);
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        when(repository.searchCatalog(any(), any(), any(), any(), pageableCaptor.capture()))
+                .thenReturn(Page.empty());
+        service.catalogProducts(request);
+
+        assertEquals(5, pageableCaptor.getValue().getPageSize());
+    }
+    @Test
+    @DisplayName("Catálogo: Ordenamiento configurado en la paginación")
+    void catalogProducts_VerifySorting() {
+        ProductRequestPagDTO request = new ProductRequestPagDTO();
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        when(repository.searchCatalog(any(), any(), any(), any(), pageableCaptor.capture()))
+                .thenReturn(Page.empty());
+        service.catalogProducts(request);
+
+        Sort sort = pageableCaptor.getValue().getSort();
+        assertNotNull(sort.getOrderFor("price"));
+        assertEquals(Sort.Direction.ASC, sort.getOrderFor("price").getDirection());
+    }
+    @Test
+    @DisplayName("Catálogo: Solo debe retornar productos activos")
+    void catalogProducts_OnlyActiveProductsReturned() {
+        Product activeProduct = createProduct(1, true, 150);
+        Page<Product> pageMock = new PageImpl<>(List.of(activeProduct));
+        when(repository.searchCatalog(any(), any(), any(), any(), any(Pageable.class)))
+                .thenReturn(pageMock);
+        Page<ProductResponseDTO> result = service.catalogProducts(new ProductRequestPagDTO());
+        assertEquals(1, result.getContent().size());
+        assertTrue(result.getContent().get(0).getActive());
     }
 
     @Test
