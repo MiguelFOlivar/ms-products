@@ -29,6 +29,8 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @Service
 public class ProductServiceImpl implements IProductService{
     @Autowired
@@ -60,6 +62,7 @@ public class ProductServiceImpl implements IProductService{
     }
 
     @Override
+    @Transactional
     public ProductResponseDTO saveProduct(ProductRegisterRequest dto) {
 
         if (dto.getName() == null || dto.getName().isBlank()){
