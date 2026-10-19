@@ -1,5 +1,8 @@
 package org.dev.app.msproducts.service;
 
+import org.dev.app.msproducts.dto.BulkPriceUpdateRequest;
+import org.dev.app.msproducts.dto.BulkPriceUpdateResponse;
+import org.dev.app.msproducts.dto.PriceUpdateItem;
 import org.dev.app.msproducts.dto.ProductRegisterRequest;
 import org.dev.app.msproducts.dto.ProductRequestDTO;
 import org.dev.app.msproducts.dto.ProductResponseDTO;
@@ -11,7 +14,9 @@ import org.dev.app.msproducts.exceptions.ProductNotFoundException;
 import org.dev.app.msproducts.model.Category;
 import org.dev.app.msproducts.model.Product;
 import org.dev.app.msproducts.repository.CategoryRepository;
+import org.dev.app.msproducts.repository.PriceHistoryRepository;
 import org.dev.app.msproducts.repository.ProductRepository;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -24,10 +29,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ProductServiceImplTest {
@@ -36,6 +38,8 @@ class ProductServiceImplTest {
     private ProductRepository repository;
     @Mock
     private CategoryRepository categoryRepository;
+    @Mock
+    private PriceHistoryRepository priceHistoryRepository;
 
     @InjectMocks
     private ProductServiceImpl service;
@@ -121,7 +125,7 @@ class ProductServiceImplTest {
         request.setName("Nuevo producto");
         request.setDescription("Descripción");
         request.setPrice(new BigDecimal("29.99"));
-        request.setStock(8);
+        request.setStock(150);
         request.setCategoryId(1);
 
         when(repository.save(any(Product.class))).thenAnswer(invocation -> {
@@ -136,7 +140,7 @@ class ProductServiceImplTest {
         assertEquals("Nuevo producto", result.getName());
         assertEquals("Descripción", result.getDescription());
         assertEquals(new BigDecimal("29.99"), result.getPrice());
-        assertEquals(8, result.getStock());
+        assertEquals(150, result.getStock());
         assertEquals(1, result.getCategoryId());
         verify(repository).save(any(Product.class));
     }
@@ -147,7 +151,7 @@ class ProductServiceImplTest {
         request.setName("  pRODUCTO REPETIDO  ");
         request.setDescription("Descripción");
         request.setPrice(new BigDecimal("29.99"));
-        request.setStock(8);
+        request.setStock(150);
         request.setCategoryId(1);
         when(repository.existsByNameIgnoreCase("pRODUCTO REPETIDO")).thenReturn(true);
 
@@ -160,26 +164,26 @@ class ProductServiceImplTest {
 
     @Test
     void updateStockPersistsAndReturnsUpdatedStock() {
-        Product product = createProduct(1, true, 5);
+        Product product = createProduct(1, true, 150);
         when(repository.findById(1)).thenReturn(Optional.of(product));
         when(repository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        ProductResponseDTO result = service.updateStock(1, 10);
+        ProductResponseDTO result = service.updateStock(1, 150);
 
-        assertEquals(10, result.getStock());
+        assertEquals(150, result.getStock());
         verify(repository).save(product);
     }
 
     @Test
     void updateStockThrowsForNegativeStock() {
-        assertThrows(IllegalArgumentException.class, () -> service.updateStock(1, -1));
+        assertThrows(ProductException.class, () -> service.updateStock(1, -1));
         verify(repository, never()).findById(1);
         verify(repository, never()).save(any(Product.class));
     }
 
     @Test
     void updateStockThrowsForNullStock() {
-        assertThrows(IllegalArgumentException.class, () -> service.updateStock(1, null));
+        assertThrows(ProductException.class, () -> service.updateStock(1, null));
         verify(repository, never()).findById(1);
         verify(repository, never()).save(any(Product.class));
     }
@@ -188,7 +192,7 @@ class ProductServiceImplTest {
     void updateStockThrowsWhenProductDoesNotExist() {
         when(repository.findById(1)).thenReturn(Optional.empty());
 
-        assertThrows(ProductNotFoundException.class, () -> service.updateStock(1, 10));
+        assertThrows(ProductNotFoundException.class, () -> service.updateStock(1, 150));
         verify(repository, never()).save(any(Product.class));
     }
 
@@ -214,15 +218,12 @@ class ProductServiceImplTest {
         Integer productId = 999;
         ProductRequestDTO request = new ProductRequestDTO();
 
-        //Simulamos que la base de datos regresa vacío
         when(repository.findById(productId)).thenReturn(Optional.empty());
 
-        //Verificamos que al ejecutar, lanze ProductNotFoundException
         assertThrows(ProductNotFoundException.class, () -> service.updateProduct(productId, request));
 
         verify(repository, never()).save(any(Product.class));
     }
-
 
     @Test
     void updateProductSavesAndReturnsUpdatedProduc() {
@@ -233,14 +234,13 @@ class ProductServiceImplTest {
         request.setName("Laptop Gamer Actualizada");
         request.setDescription("Nueva descripción");
         request.setPrice(new BigDecimal("25000.00"));
-        request.setStock(15);
+        request.setStock(150);
         request.setCategoryId(categoryId);
 
-        Product productoExistente = createProduct(productId, true, 5);
+        Product productoExistente = createProduct(productId, true, 150);
 
         Category categoriaExistente = new Category();
         categoriaExistente.setId(categoryId);
-
 
         when(repository.findById(productId)).thenReturn(Optional.of(productoExistente));
         when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(categoriaExistente));
@@ -250,5 +250,123 @@ class ProductServiceImplTest {
         assertNotNull(resultado);
         assertEquals("Laptop Gamer Actualizada", resultado.getName());
         verify(repository, times(1)).save(any(Product.class));
+    }
+
+    @Test
+    @DisplayName("1. Lote válido: Actualiza precios y genera historial de precios")
+    void bulkUpdatePrices_ValidBatch_Success() {
+        Product p1 = createProduct(10, true, 100);
+        p1.setName("Producto A");
+        p1.setPrice(new BigDecimal("500.00"));
+
+        Product p2 = createProduct(11, true, 100);
+        p2.setName("Producto B");
+        p2.setPrice(new BigDecimal("1000.00"));
+
+        BulkPriceUpdateRequest request = new BulkPriceUpdateRequest(List.of(
+                new PriceUpdateItem(10, new BigDecimal("899.99")),
+                new PriceUpdateItem(11, new BigDecimal("1299.00"))
+        ));
+
+        when(repository.findAllById(List.of(10, 11))).thenReturn(List.of(p1, p2));
+        when(repository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        BulkPriceUpdateResponse response = service.bulkUpdatePrices(request);
+
+        assertNotNull(response);
+        assertEquals(2, response.getTotalUpdated());
+        assertEquals(new BigDecimal("899.99"), p1.getPrice());
+        assertEquals(new BigDecimal("1299.00"), p2.getPrice());
+
+        verify(repository, times(2)).save(any(Product.class));
+        verify(priceHistoryRepository, times(1)).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("2. Lote vacío: Rechaza con ProductException y no modifica BD")
+    void bulkUpdatePrices_EmptyBatch_ThrowsException() {
+        BulkPriceUpdateRequest requestVacio = new BulkPriceUpdateRequest(List.of());
+
+        ProductException ex = assertThrows(ProductException.class,
+                () -> service.bulkUpdatePrices(requestVacio));
+
+        assertTrue(ex.getMessage().contains("no puede estar vacío"));
+        verify(repository, never()).findAllById(any());
+        verify(repository, never()).save(any());
+        verify(priceHistoryRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("3. IDs duplicados: Rechaza con ProductException antes de consultar la BD")
+    void bulkUpdatePrices_DuplicateIds_ThrowsException() {
+        BulkPriceUpdateRequest requestDuplicado = new BulkPriceUpdateRequest(List.of(
+                new PriceUpdateItem(10, new BigDecimal("150.00")),
+                new PriceUpdateItem(10, new BigDecimal("200.00"))
+        ));
+
+        ProductException ex = assertThrows(ProductException.class,
+                () -> service.bulkUpdatePrices(requestDuplicado));
+
+        assertTrue(ex.getMessage().contains("IDs duplicados"));
+        verify(repository, never()).findAllById(any());
+        verify(repository, never()).save(any());
+        verify(priceHistoryRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("4. Precio inválido (<= 0): Rechaza el lote completo")
+    void bulkUpdatePrices_InvalidPrice_ThrowsException() {
+        BulkPriceUpdateRequest requestPrecioInvalido = new BulkPriceUpdateRequest(List.of(
+                new PriceUpdateItem(10, new BigDecimal("150.00")),
+                new PriceUpdateItem(11, new BigDecimal("-5.00"))
+        ));
+
+        ProductException ex = assertThrows(ProductException.class,
+                () -> service.bulkUpdatePrices(requestPrecioInvalido));
+
+        assertTrue(ex.getMessage().contains("mayor"));
+        verify(repository, never()).findAllById(any());
+        verify(repository, never()).save(any());
+        verify(priceHistoryRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("5. Producto inexistente: Rechaza el lote completo sin actualizar nada")
+    void bulkUpdatePrices_NonExistentProduct_ThrowsException() {
+        Product p10 = createProduct(10, true, 100);
+
+        BulkPriceUpdateRequest request = new BulkPriceUpdateRequest(List.of(
+                new PriceUpdateItem(10, new BigDecimal("899.99")),
+                new PriceUpdateItem(99, new BigDecimal("1299.00"))
+        ));
+
+        when(repository.findAllById(List.of(10, 99))).thenReturn(List.of(p10));
+
+        ProductNotFoundException ex = assertThrows(ProductNotFoundException.class,
+                () -> service.bulkUpdatePrices(request));
+
+        assertTrue(ex.getMessage().contains("99"));
+        verify(repository, never()).save(any());
+        verify(priceHistoryRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("6. Rollback ante fallo: Si falla el guardado o historial, se propaga la excepción para rollback")
+    void bulkUpdatePrices_RollbackWhenUpdateFails() {
+        Product p10 = createProduct(10, true, 100);
+
+        BulkPriceUpdateRequest request = new BulkPriceUpdateRequest(List.of(
+                new PriceUpdateItem(10, new BigDecimal("899.99"))
+        ));
+
+        when(repository.findAllById(List.of(10))).thenReturn(List.of(p10));
+        when(repository.save(any(Product.class))).thenReturn(p10);
+        doThrow(new RuntimeException("Error simulado de base de datos en historial"))
+                .when(priceHistoryRepository).saveAll(any());
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> service.bulkUpdatePrices(request));
+
+        assertEquals("Error simulado de base de datos en historial", ex.getMessage());
     }
 }
