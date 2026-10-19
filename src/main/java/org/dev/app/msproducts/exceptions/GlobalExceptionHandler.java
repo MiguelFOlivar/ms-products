@@ -30,6 +30,24 @@ public class GlobalExceptionHandler {
                 .body(Map.of("message", ex.getMessage()));
     }
 
+    @ExceptionHandler(PromotionNotFoundException.class)
+    public ResponseEntity<?> handlePromotionNotFound(PromotionNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
+    @ExceptionHandler(PromotionConflictException.class)
+    public ResponseEntity<?> handlePromotionConflict(PromotionConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
+    @ExceptionHandler(PromotionException.class)
+    public ResponseEntity<?> handlePromotionException(PromotionException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
     @ExceptionHandler(NoProductsAvailableException.class)
     public ResponseEntity<?> handleNoProducts(NoProductsAvailableException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
