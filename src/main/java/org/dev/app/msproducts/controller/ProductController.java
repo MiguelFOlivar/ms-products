@@ -1,5 +1,7 @@
 package org.dev.app.msproducts.controller;
 
+import org.dev.app.msproducts.dto.BulkPriceUpdateRequest;
+import org.dev.app.msproducts.dto.BulkPriceUpdateResponse;
 import org.dev.app.msproducts.dto.ProductRegisterRequest;
 import org.dev.app.msproducts.dto.ProductRequestDTO;
 import org.dev.app.msproducts.dto.ProductResponseDTO;
@@ -65,6 +67,13 @@ public class ProductController {
     public ResponseEntity<ProductResponseDTO> updateStock(@PathVariable Integer id,
                                                           @RequestParam Integer stock) {
         return ResponseEntity.ok(service.updateStock(id, stock));
+    }
+
+    @PatchMapping("/prices/bulk")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<BulkPriceUpdateResponse> bulkUpdatePrices(
+            @Valid @RequestBody BulkPriceUpdateRequest request) {
+        return ResponseEntity.ok(service.bulkUpdatePrices(request));
     }
 
     @PutMapping("/{id}")

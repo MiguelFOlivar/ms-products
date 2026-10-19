@@ -3,6 +3,19 @@ package org.dev.app.msproducts.service;
 import org.dev.app.msproducts.dto.ProductRegisterRequest;
 import org.dev.app.msproducts.dto.ProductRequestDTO;
 import org.dev.app.msproducts.dto.ProductResponseDTO;
+import org.dev.app.msproducts.dto.BulkPriceUpdateRequest;
+import org.dev.app.msproducts.dto.BulkPriceUpdateResponse;
+import org.dev.app.msproducts.dto.PriceUpdateItem;
+import org.dev.app.msproducts.dto.ProductPriceUpdatedDTO;
+import org.dev.app.msproducts.model.PriceHistory;
+import org.dev.app.msproducts.repository.PriceHistoryRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.dev.app.msproducts.exceptions.NoProductsAvailableException;
 import org.dev.app.msproducts.exceptions.ProductAlreadyExistsException;
 import org.dev.app.msproducts.exceptions.ProductException;
@@ -28,6 +41,8 @@ public class ProductServiceImpl implements IProductService{
     private ProductRepository repository;
     @Autowired
     private CategoryRepository categoryRepository;
+    @Autowired
+    private PriceHistoryRepository priceHistoryRepository;
 
 
     @Override
@@ -271,5 +286,93 @@ public class ProductServiceImpl implements IProductService{
                         p.getCategory().getId()
                 ))
                 .toList();
+    }
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BulkPriceUpdateResponse bulkUpdatePrices(BulkPriceUpdateRequest request) {
+        if (request == null || request.getUpdates() == null || request.getUpdates().isEmpty()) {
+            throw new ProductException("El lote de actualizaciones no puede estar vacío");
+        }
+
+        List<PriceUpdateItem> updates = request.getUpdates();
+        validarTamanoLote(updates);
+
+        Set<Integer> uniqueIds = new HashSet<>();
+        List<Integer> duplicateIds = new ArrayList<>();
+        for (PriceUpdateItem item : updates) {
+            if (item.getProductId() != null && !uniqueIds.add(item.getProductId())) {
+                duplicateIds.add(item.getProductId());
+            }
+        }
+        if (!duplicateIds.isEmpty()) {
+            throw new ProductException("No se permiten IDs duplicados dentro de la misma solicitud: " + duplicateIds);
+        }
+
+        for (PriceUpdateItem item : updates) {
+            if (item.getProductId() == null) {
+                throw new ProductException("El ID del producto no puede ser nulo");
+            }
+            if (item.getNewPrice() == null || item.getNewPrice().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new ProductException("Todos los precios deben ser mayores que cero. Precio inválido para producto ID: " + item.getProductId());
+            }
+        }
+
+        List<Integer> ids = updates.stream().map(PriceUpdateItem::getProductId).toList();
+        List<Product> products = repository.findAllById(ids);
+
+        Set<Integer> foundIds = products.stream().map(Product::getId).collect(Collectors.toSet());
+        List<Integer> missingIds = ids.stream().filter(id -> !foundIds.contains(id)).toList();
+
+        if (!missingIds.isEmpty()) {
+            throw new ProductNotFoundException("El lote fue rechazado porque los siguientes productos no existen: " + missingIds);
+        }
+
+        Map<Integer, Product> productMap = products.stream()
+                .collect(Collectors.toMap(Product::getId, p -> p));
+
+        String currentAdmin = getCurrentUsername();
+        List<ProductPriceUpdatedDTO> updatedDtos = new ArrayList<>();
+        List<PriceHistory> historyRecords = new ArrayList<>();
+
+        for (PriceUpdateItem item : updates) {
+            Product product = productMap.get(item.getProductId());
+            BigDecimal oldPrice = product.getPrice();
+            BigDecimal newPrice = item.getNewPrice();
+
+            product.setPrice(newPrice);
+            repository.save(product);
+
+            PriceHistory history = new PriceHistory(product, oldPrice, newPrice, currentAdmin);
+            historyRecords.add(history);
+
+            updatedDtos.add(new ProductPriceUpdatedDTO(
+                    product.getId(),
+                    product.getName(),
+                    oldPrice,
+                    newPrice
+            ));
+        }
+
+        priceHistoryRepository.saveAll(historyRecords);
+
+        return new BulkPriceUpdateResponse(
+                "Lote de precios actualizado con éxito.",
+                updatedDtos.size(),
+                updatedDtos
+        );
+    }
+
+    private void validarTamanoLote(List<PriceUpdateItem> updates) {
+    }
+
+    private String getCurrentUsername() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getName() != null && !auth.getName().isBlank()) {
+                return auth.getName();
+            }
+        } catch (Exception ignored) {
+        }
+        return "ADMIN";
     }
 }

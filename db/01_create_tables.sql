@@ -110,6 +110,19 @@ CREATE TABLE IF NOT EXISTS stock_movements (
     DEFAULT CHARSET = utf8mb4
     COLLATE = utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS price_history (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    product_id INT NOT NULL,
+    old_price DECIMAL(10, 2) NOT NULL,
+    new_price DECIMAL(10, 2) NOT NULL,
+    changed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    changed_by VARCHAR(100) NOT NULL,
+
+    PRIMARY KEY (id),
+    CONSTRAINT fk_price_history_product
+    FOREIGN KEY (product_id) REFERENCES products(id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
 -- -----------------------------------------------------
 -- Datos simulados para users (contraseñas FALSAS, no son hashes reales)
 -- -----------------------------------------------------

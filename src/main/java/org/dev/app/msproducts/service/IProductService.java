@@ -3,6 +3,8 @@ package org.dev.app.msproducts.service;
 import org.dev.app.msproducts.dto.ProductRegisterRequest;
 import org.dev.app.msproducts.dto.ProductRequestDTO;
 import org.dev.app.msproducts.dto.ProductResponseDTO;
+import org.dev.app.msproducts.dto.BulkPriceUpdateRequest;
+import org.dev.app.msproducts.dto.BulkPriceUpdateResponse;
 
 import java.util.List;
 
@@ -17,4 +19,5 @@ public interface IProductService {
     void deleteProduct(Integer id);
     Integer getStockByProductId(Integer id);
     List<ProductResponseDTO> filterProducts(Integer categoryId, ProductRequestDTO dto);
+    BulkPriceUpdateResponse bulkUpdatePrices(BulkPriceUpdateRequest request);
 }
