@@ -46,10 +46,6 @@ CREATE TABLE IF NOT EXISTS promotions (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (id),
-    CONSTRAINT chk_promotions_discount
-    CHECK (discount_percentage > 0 AND discount_percentage <= 50),
-    CONSTRAINT chk_promotions_dates
-    CHECK (starts_at < ends_at),
     INDEX idx_promotions_active_dates (active, starts_at, ends_at)
     ) ENGINE = InnoDB
     DEFAULT CHARSET = utf8mb4
