@@ -98,6 +98,22 @@ Se rechazan intervalos superpuestos para un mismo producto con HTTP 409.
 }
 ```
 
+### Ajustes y movimientos de inventario
+- `POST /api/products/{id}/stock-adjustments` (solo ADMIN): registra un ajuste de stock y su movimiento histórico en una sola transacción.
+- `GET /api/products/{id}/stock-movements`: consulta el historial del producto, más reciente primero. No hay endpoints ordinarios para modificar o eliminar movimientos.
+
+El cuerpo del ajuste requiere una cantidad positiva, tipo `IN` o `OUT` y un motivo:
+
+```json
+{
+  "quantity": 5,
+  "movementType": "IN",
+  "reason": "Reposición de inventario"
+}
+```
+
+La respuesta del ajuste incluye el actor `admin`, la fecha y el stock resultante. El actor se guarda usando la fila activa `admin@demo.com` con rol `ADMIN` que ya existe en `users`, sin modificar el esquema. Si esa fila no existe, la petición se rechaza con HTTP 409. Las salidas que dejarían el stock negativo se rechazan con HTTP 409; una cantidad cero o negativa se rechaza con HTTP 400.
+
 ### Registrar producto
 - **Método:** `POST /api/products`
 - **Rol requerido:** Admin
