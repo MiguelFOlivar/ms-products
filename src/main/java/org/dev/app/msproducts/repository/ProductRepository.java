@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -42,4 +43,8 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select product from Product product where product.id = :id")
     Optional<Product> findByIdForUpdate(@Param("id") Integer id);
+
+    @Modifying
+    @Query("update Product product set product.stock = :stock where product.id = :id")
+    int updateStockValue(@Param("id") Integer id, @Param("stock") Integer stock);
 }
