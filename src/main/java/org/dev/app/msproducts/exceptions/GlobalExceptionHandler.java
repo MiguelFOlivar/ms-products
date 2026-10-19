@@ -6,6 +6,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -78,4 +79,53 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST)
                 .body(response);
     }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalArgument(
+            IllegalArgumentException ex) {
+
+        Map<String, String> response = new HashMap<>();
+
+        response.put("error", "Archivo inválido");
+        response.put("message", ex.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
+
+    @ExceptionHandler(InvalidCsvException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidCsv(
+            InvalidCsvException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(Map.of(
+                        "error", "Archivo inválido",
+                        "message", ex.getMessage()
+                ));
+    }
+
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, String>> handleMaxUploadSize(
+            MaxUploadSizeExceededException ex) {
+
+        Map<String, String> response = new HashMap<>();
+
+        response.put(
+                "error",
+                "Archivo demasiado grande"
+        );
+
+        response.put(
+                "message",
+                "El archivo supera el tamaño máximo permitido de 5 MB"
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(response);
+    }
+
 }
