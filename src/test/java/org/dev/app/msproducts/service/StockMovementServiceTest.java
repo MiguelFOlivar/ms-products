@@ -156,6 +156,66 @@ class StockMovementServiceTest {
         assertEquals("IN", result.get(0).getMovementType());
     }
 
+    @Test
+    void rejectsMissingOrInvalidAdjustmentFieldsBeforeAccessingRepositories() {
+        assertThrows(ProductException.class, () -> service.adjustStock(12, null));
+
+        StockAdjustmentRequest missingQuantity = request(1, StockMovementType.IN);
+        missingQuantity.setQuantity(null);
+        assertThrows(ProductException.class, () -> service.adjustStock(12, missingQuantity));
+        assertThrows(ProductException.class,
+                () -> service.adjustStock(12, request(-1, StockMovementType.IN)));
+
+        StockAdjustmentRequest missingType = request(1, StockMovementType.IN);
+        missingType.setMovementType(null);
+        assertThrows(ProductException.class, () -> service.adjustStock(12, missingType));
+
+        StockAdjustmentRequest missingReason = request(1, StockMovementType.IN);
+        missingReason.setReason("  ");
+        assertThrows(ProductException.class, () -> service.adjustStock(12, missingReason));
+        StockAdjustmentRequest nullReason = request(1, StockMovementType.IN);
+        nullReason.setReason(null);
+        assertThrows(ProductException.class, () -> service.adjustStock(12, nullReason));
+        StockAdjustmentRequest longReason = request(1, StockMovementType.IN);
+        longReason.setReason("x".repeat(256));
+        assertThrows(ProductException.class, () -> service.adjustStock(12, longReason));
+
+        verifyNoInteractions(productRepository, stockMovementRepository, adminActorRepository);
+    }
+
+    @Test
+    void rejectsStockArithmeticOverflow() {
+        product.setStock(Integer.MAX_VALUE);
+        when(productRepository.findByIdForUpdate(12)).thenReturn(Optional.of(product));
+
+        assertThrows(ProductException.class,
+                () -> service.adjustStock(12, request(1, StockMovementType.IN)));
+
+        verifyNoInteractions(stockMovementRepository, adminActorRepository);
+    }
+
+    @Test
+    void reportsFailedConditionalStockUpdate() {
+        when(productRepository.findByIdForUpdate(12)).thenReturn(Optional.of(product));
+        when(adminActorRepository.findDemoAdminId()).thenReturn(1L);
+        when(productRepository.updateStockValue(12, 155)).thenReturn(0);
+
+        assertThrows(ProductNotFoundException.class,
+                () -> service.adjustStock(12, request(5, StockMovementType.IN)));
+
+        verifyNoInteractions(stockMovementRepository);
+    }
+
+    @Test
+    void rejectsHistoryForMissingProductAndReturnsEmptyHistoryForExistingProduct() {
+        when(productRepository.existsById(404)).thenReturn(false);
+        assertThrows(ProductNotFoundException.class, () -> service.getStockMovements(404));
+
+        when(productRepository.existsById(12)).thenReturn(true);
+        when(stockMovementRepository.findByProductIdOrderByCreatedAtDescIdDesc(12)).thenReturn(List.of());
+        assertTrue(service.getStockMovements(12).isEmpty());
+    }
+
     private StockAdjustmentRequest request(int quantity, StockMovementType type) {
         StockAdjustmentRequest request = new StockAdjustmentRequest();
         request.setQuantity(quantity);

@@ -3,6 +3,7 @@ package org.dev.app.msproducts.service;
 import org.dev.app.msproducts.dto.*;
 import org.dev.app.msproducts.exceptions.*;
 import org.dev.app.msproducts.model.Category;
+import org.dev.app.msproducts.model.PriceHistory;
 import org.dev.app.msproducts.model.Product;
 import org.dev.app.msproducts.repository.CategoryRepository;
 import org.dev.app.msproducts.repository.PriceHistoryRepository;
@@ -18,10 +19,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -449,5 +455,250 @@ class ProductServiceImplTest {
                 () -> service.bulkUpdatePrices(request));
 
         assertEquals("Error simulado de base de datos en historial", ex.getMessage());
+    }
+
+    @Test
+    void rejectsInvalidProductRegistrationFieldsAndMissingCategory() {
+        assertInvalidRegistration(request -> request.setName(null));
+        assertInvalidRegistration(request -> request.setName("   "));
+        assertInvalidRegistration(request -> request.setPrice(null));
+        assertInvalidRegistration(request -> request.setPrice(BigDecimal.ZERO));
+        assertInvalidRegistration(request -> request.setStock(null));
+        assertInvalidRegistration(request -> request.setStock(-1));
+        assertInvalidRegistration(request -> request.setStock(100));
+
+        ProductRegisterRequest request = validRegisterRequest();
+        when(repository.existsByNameIgnoreCase("Nuevo producto")).thenReturn(false);
+        when(categoryRepository.findById(1)).thenReturn(Optional.empty());
+        assertThrows(ProductException.class, () -> service.saveProduct(request));
+    }
+
+    @Test
+    void rejectsInvalidProductUpdateFieldsAndMissingCategory() {
+        Product existing = createProduct(1, true, 150);
+        when(repository.findById(1)).thenReturn(Optional.of(existing));
+        assertInvalidUpdate(request -> request.setName(null));
+        assertInvalidUpdate(request -> request.setName("  "));
+        assertInvalidUpdate(request -> request.setPrice(null));
+        assertInvalidUpdate(request -> request.setPrice(BigDecimal.ZERO));
+        assertInvalidUpdate(request -> request.setStock(100));
+        assertInvalidUpdate(request -> request.setStock(-1));
+
+        ProductRequestDTO request = validProductUpdateRequest();
+        when(categoryRepository.findById(1)).thenReturn(Optional.empty());
+        assertThrows(ProductException.class, () -> service.updateProduct(1, request));
+    }
+
+    @Test
+    void filtersProductsByCategoryAndCaseInsensitiveName() {
+        Product matching = createProduct(1, true, 150);
+        matching.setName("Wireless Mouse");
+        Product other = createProduct(2, true, 150);
+        other.setName("Keyboard");
+        when(repository.findByActiveTrue()).thenReturn(List.of(matching, other));
+        when(categoryRepository.findById(1)).thenReturn(Optional.of(matching.getCategory()));
+        ProductRequestDTO filters = new ProductRequestDTO();
+        filters.setName("MOUSE");
+
+        List<ProductResponseDTO> result = service.filterProducts(1, filters);
+
+        assertEquals(1, result.size());
+        assertEquals("Wireless Mouse", result.get(0).getName());
+        verify(categoryRepository).findById(1);
+    }
+
+    @Test
+    void filterWithoutPositiveCategoryOrNameReturnsAvailableProducts() {
+        Product product = createProduct(1, true, 150);
+        when(repository.findByActiveTrue()).thenReturn(List.of(product));
+        ProductRequestDTO noName = new ProductRequestDTO();
+
+        assertEquals(1, service.filterProducts(0, noName).size());
+        noName.setName("  ");
+        assertEquals(1, service.filterProducts(null, noName).size());
+        verifyNoInteractions(categoryRepository);
+    }
+
+    @Test
+    void rejectsMissingCategoryAndEmptyFilterResults() {
+        when(repository.findByActiveTrue()).thenReturn(List.of(createProduct(1, true, 150)));
+        when(categoryRepository.findById(9)).thenReturn(Optional.empty());
+        assertThrows(ProductException.class, () -> service.filterProducts(9, null));
+
+        ProductRequestDTO filters = new ProductRequestDTO();
+        filters.setName("does not exist");
+        assertThrows(NoProductsAvailableException.class, () -> service.filterProducts(null, filters));
+        when(repository.findByActiveTrue()).thenReturn(List.of());
+        assertThrows(NoProductsAvailableException.class, () -> service.filterProducts(null, null));
+    }
+
+    @Test
+    void returnsInactiveProductsAndRejectsAnEmptyInactiveCatalog() {
+        Product inactive = createProduct(2, false, 150);
+        when(repository.findByActiveFalse()).thenReturn(List.of(inactive));
+        assertEquals(2, service.getInactiveProducts().get(0).getId());
+
+        when(repository.findByActiveFalse()).thenReturn(List.of());
+        assertThrows(NoProductsAvailableException.class, () -> service.getInactiveProducts());
+    }
+
+    @Test
+    void rejectsBlankSearchAndReportsWhenNoNamesMatch() {
+        assertThrows(ProductException.class, () -> service.searchProductsByName(null));
+        assertThrows(ProductException.class, () -> service.searchProductsByName("  "));
+        when(repository.findByNameContainingIgnoreCase("Missing")).thenReturn(List.of());
+        assertThrows(ProductNotFoundException.class, () -> service.searchProductsByName(" Missing "));
+    }
+
+    @Test
+    void searchesProductsByTrimmedName() {
+        Product product = createProduct(1, true, 150);
+        when(repository.findByNameContainingIgnoreCase("Mouse")).thenReturn(List.of(product));
+
+        List<ProductResponseDTO> result = service.searchProductsByName(" Mouse ");
+
+        assertEquals(1, result.size());
+        assertEquals(1, result.get(0).getId());
+        verify(repository).findByNameContainingIgnoreCase("Mouse");
+    }
+
+    @Test
+    void getsStockByProductIdOrReportsMissingProduct() {
+        when(repository.findById(1)).thenReturn(Optional.of(createProduct(1, true, 150)));
+        assertEquals(150, service.getStockByProductId(1));
+        when(repository.findById(2)).thenReturn(Optional.empty());
+        assertThrows(ProductNotFoundException.class, () -> service.getStockByProductId(2));
+    }
+
+    @Test
+    void catalogUsesDefaultsAndRejectsInvalidPageAndSize() {
+        when(repository.searchCatalog(isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(Page.empty());
+        assertTrue(service.catalogProducts(null).isEmpty());
+
+        ProductRequestPagDTO invalidPage = new ProductRequestPagDTO();
+        invalidPage.setPage(-1);
+        assertThrows(ProductException.class, () -> service.catalogProducts(invalidPage));
+
+        ProductRequestPagDTO invalidSize = new ProductRequestPagDTO();
+        invalidSize.setSize(0);
+        assertThrows(ProductException.class, () -> service.catalogProducts(invalidSize));
+
+        ProductRequestPagDTO blankName = new ProductRequestPagDTO();
+        blankName.setName("  ");
+        blankName.setSize(2);
+        service.catalogProducts(blankName);
+        verify(repository, times(2)).searchCatalog(isNull(), isNull(), isNull(), isNull(), any(Pageable.class));
+    }
+
+    @Test
+    void catalogAcceptsPriceBoundsWhenOnlyOneBoundIsProvided() {
+        when(repository.searchCatalog(any(), any(), any(), any(), any(Pageable.class))).thenReturn(Page.empty());
+        ProductRequestPagDTO minimumOnly = new ProductRequestPagDTO();
+        minimumOnly.setMinPrice(new BigDecimal("10.00"));
+        service.catalogProducts(minimumOnly);
+        ProductRequestPagDTO maximumOnly = new ProductRequestPagDTO();
+        maximumOnly.setMaxPrice(new BigDecimal("20.00"));
+        service.catalogProducts(maximumOnly);
+
+        verify(repository).searchCatalog(isNull(), isNull(), eq(new BigDecimal("10.00")), isNull(), any(Pageable.class));
+        verify(repository).searchCatalog(isNull(), isNull(), isNull(), eq(new BigDecimal("20.00")), any(Pageable.class));
+    }
+
+    @Test
+    void bulkUpdateRejectsNullRequestAndMissingItemFields() {
+        assertThrows(ProductException.class, () -> service.bulkUpdatePrices(null));
+        assertThrows(ProductException.class,
+                () -> service.bulkUpdatePrices(new BulkPriceUpdateRequest(null)));
+        assertThrows(ProductException.class, () -> service.bulkUpdatePrices(
+                new BulkPriceUpdateRequest(Arrays.asList(new PriceUpdateItem(null, BigDecimal.ONE)))));
+        assertThrows(ProductException.class, () -> service.bulkUpdatePrices(
+                new BulkPriceUpdateRequest(List.of(new PriceUpdateItem(1, null)))));
+        verify(repository, never()).findAllById(any());
+    }
+
+    @Test
+    void usesAuthenticatedUsernameWhenRecordingPriceHistory() {
+        Product product = createProduct(10, true, 150);
+        product.setPrice(new BigDecimal("10.00"));
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("catalog-admin", "password"));
+        try {
+            when(repository.findAllById(List.of(10))).thenReturn(List.of(product));
+            when(repository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            when(priceHistoryRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+            service.bulkUpdatePrices(new BulkPriceUpdateRequest(
+                    List.of(new PriceUpdateItem(10, new BigDecimal("12.00")))));
+
+            ArgumentCaptor<List<PriceHistory>> historyCaptor = ArgumentCaptor.forClass(List.class);
+            verify(priceHistoryRepository).saveAll(historyCaptor.capture());
+            assertEquals("catalog-admin", historyCaptor.getValue().get(0).getChangedBy());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void usesAdminFallbackForNullBlankOrFailingAuthenticationNames() {
+        Authentication nullName = mock(Authentication.class);
+        when(nullName.getName()).thenReturn(null);
+        Authentication blankName = mock(Authentication.class);
+        when(blankName.getName()).thenReturn("  ");
+        Authentication failingName = mock(Authentication.class);
+        when(failingName.getName()).thenThrow(new IllegalStateException("Authentication unavailable"));
+
+        List<Authentication> authentications = List.of(nullName, blankName, failingName);
+        when(repository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        for (int i = 0; i < authentications.size(); i++) {
+            Product product = createProduct(20 + i, true, 150);
+            when(repository.findAllById(List.of(20 + i))).thenReturn(List.of(product));
+        }
+        when(priceHistoryRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        try {
+            for (int i = 0; i < authentications.size(); i++) {
+                SecurityContextHolder.getContext().setAuthentication(authentications.get(i));
+                service.bulkUpdatePrices(new BulkPriceUpdateRequest(List.of(
+                        new PriceUpdateItem(20 + i, new BigDecimal("25.00")))));
+            }
+            ArgumentCaptor<List<PriceHistory>> historyCaptor = ArgumentCaptor.forClass(List.class);
+            verify(priceHistoryRepository, times(3)).saveAll(historyCaptor.capture());
+            assertEquals("ADMIN", historyCaptor.getAllValues().get(0).get(0).getChangedBy());
+            assertEquals("ADMIN", historyCaptor.getAllValues().get(1).get(0).getChangedBy());
+            assertEquals("ADMIN", historyCaptor.getAllValues().get(2).get(0).getChangedBy());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    private ProductRegisterRequest validRegisterRequest() {
+        ProductRegisterRequest request = new ProductRegisterRequest();
+        request.setName("Nuevo producto");
+        request.setPrice(new BigDecimal("20.00"));
+        request.setStock(150);
+        request.setCategoryId(1);
+        return request;
+    }
+
+    private ProductRequestDTO validProductUpdateRequest() {
+        ProductRequestDTO request = new ProductRequestDTO();
+        request.setName("Producto actualizado");
+        request.setPrice(new BigDecimal("20.00"));
+        request.setStock(150);
+        request.setCategoryId(1);
+        return request;
+    }
+
+    private void assertInvalidRegistration(Consumer<ProductRegisterRequest> mutation) {
+        ProductRegisterRequest request = validRegisterRequest();
+        mutation.accept(request);
+        assertThrows(ProductException.class, () -> service.saveProduct(request));
+    }
+
+    private void assertInvalidUpdate(Consumer<ProductRequestDTO> mutation) {
+        ProductRequestDTO request = validProductUpdateRequest();
+        mutation.accept(request);
+        assertThrows(ProductException.class, () -> service.updateProduct(1, request));
     }
 }
