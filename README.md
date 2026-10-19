@@ -76,6 +76,27 @@ datos (`ecommerce`) y ser compatible con MySQL.
 
 ## 🔗 Endpoints
 
+### Promociones
+- `POST /api/promotions` (solo ADMIN): crea una promoción para uno o más productos.
+- `PUT /api/promotions/{id}` (solo ADMIN): actualiza una promoción; enviar `"active": false` para desactivarla. Si se omite `active`, conserva el estado actual al actualizar.
+- `GET /api/promotions/active`: devuelve las promociones vigentes en este momento; las fechas se interpretan con inicio inclusivo y fin exclusivo.
+
+El cuerpo de creación y actualización usa `name`, `discountPercentage`, `startsAt`,
+`endsAt` y `productIds`. `active` es opcional (nuevo: activo por defecto). El
+descuento acepta valores mayores que 0 y hasta 50, con un máximo de dos decimales.
+El precio con descuento se calcula y redondea a dos decimales con `HALF_UP`.
+Se rechazan intervalos superpuestos para un mismo producto con HTTP 409.
+
+```json
+{
+  "name": "Oferta de temporada",
+  "discountPercentage": 15.00,
+  "startsAt": "2026-11-01T00:00:00",
+  "endsAt": "2026-11-08T00:00:00",
+  "productIds": [1, 2]
+}
+```
+
 ### Registrar producto
 - **Método:** `POST /api/products`
 - **Rol requerido:** Admin
