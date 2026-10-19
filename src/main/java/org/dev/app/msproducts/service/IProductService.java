@@ -1,8 +1,7 @@
 package org.dev.app.msproducts.service;
 
-import org.dev.app.msproducts.dto.ProductRegisterRequest;
-import org.dev.app.msproducts.dto.ProductRequestDTO;
-import org.dev.app.msproducts.dto.ProductResponseDTO;
+import org.dev.app.msproducts.dto.*;
+import org.springframework.data.domain.Page;
 
 import java.util.List;
 
@@ -17,4 +16,6 @@ public interface IProductService {
     void deleteProduct(Integer id);
     Integer getStockByProductId(Integer id);
     List<ProductResponseDTO> filterProducts(Integer categoryId, ProductRequestDTO dto);
+    BulkPriceUpdateResponse bulkUpdatePrices(BulkPriceUpdateRequest request);
+    Page<ProductResponseDTO> catalogProducts(ProductRequestPagDTO dto);
 }

@@ -1,11 +1,10 @@
 package org.dev.app.msproducts.controller;
 
-import org.dev.app.msproducts.dto.ProductRegisterRequest;
-import org.dev.app.msproducts.dto.ProductRequestDTO;
-import org.dev.app.msproducts.dto.ProductResponseDTO;
+import org.dev.app.msproducts.dto.*;
 import org.dev.app.msproducts.exceptions.ProductException;
 import org.dev.app.msproducts.service.IProductService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,9 +25,10 @@ public class ProductController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('CLIENT','ADMIN')")
-    public ResponseEntity<List<ProductResponseDTO>> getProducts() {
-        return ResponseEntity.ok(service.getAllProducts());
+    public ResponseEntity<Page<ProductResponseDTO>> getProducts(@RequestBody(required = false) ProductRequestPagDTO request){
+        return ResponseEntity.ok(service.catalogProducts(request));
     }
+
     @GetMapping("/inactive")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<ProductResponseDTO>> getInactiveProducts() {
@@ -65,6 +65,13 @@ public class ProductController {
     public ResponseEntity<ProductResponseDTO> updateStock(@PathVariable Integer id,
                                                           @RequestParam Integer stock) {
         return ResponseEntity.ok(service.updateStock(id, stock));
+    }
+
+    @PatchMapping("/prices/bulk")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<BulkPriceUpdateResponse> bulkUpdatePrices(
+            @Valid @RequestBody BulkPriceUpdateRequest request) {
+        return ResponseEntity.ok(service.bulkUpdatePrices(request));
     }
 
     @PutMapping("/{id}")

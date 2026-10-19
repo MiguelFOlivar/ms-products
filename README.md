@@ -45,7 +45,7 @@ que crea la base de datos `ecommerce` y las siguientes tablas:
 |---|---|
 | `categories` | `id` es la llave primaria autoincremental; `name` es obligatorio y único; `active` es obligatorio y vale `1` por defecto. |
 | `products` | `id` es la llave primaria autoincremental; `name`, `price`, `stock` y `category_id` son obligatorios; `description` permite `NULL`; `stock` vale `0` por defecto; `active` vale `1` por defecto; `created_at` recibe la fecha y hora actual por defecto. |
-| `promotions` | Almacena el nombre, descuento porcentual, periodo de vigencia y estado de cada promoción. El descuento debe ser mayor que `0` y no superar `50`; la fecha inicial debe ser anterior a la final. |
+| `promotions` | Almacena el nombre, descuento porcentual, periodo de vigencia y estado de cada promoción. El código valida que el descuento sea mayor que `0` y no supere `50`, y que la fecha inicial sea anterior a la final. |
 | `promotion_products` | Relaciona promociones con productos; su clave primaria compuesta evita asociar dos veces el mismo producto a una promoción. |
 
 Cada producto pertenece a una categoría mediante la llave foránea
@@ -59,9 +59,10 @@ actualizar promociones en la aplicación. El precio calculado debe redondearse
 a dos decimales para respetar la escala de `products.price`.
 
 El esquema también establece `NOT NULL` en los campos obligatorios y `UNIQUE`
-para el nombre de categoría. No define restricciones `CHECK` para validar que
-el precio sea positivo o que el stock no sea negativo; estas reglas no deben
-darse por garantizadas por la base de datos.
+para el nombre de categoría. Las reglas de negocio de las promociones se
+validan en `PromotionService`, no mediante restricciones `CHECK` en la base de
+datos. El precio y el stock tampoco tienen restricciones `CHECK` en el esquema;
+su validez debe comprobarse en el código de aplicación.
 
 Para crear la base y las tablas en MySQL, ejecuta desde la raíz del proyecto:
 
@@ -75,6 +76,43 @@ datos (`ecommerce`) y ser compatible con MySQL.
 ---
 
 ## 🔗 Endpoints
+
+### Promociones
+- `POST /api/promotions` (solo ADMIN): crea una promoción para uno o más productos.
+- `PUT /api/promotions/{id}` (solo ADMIN): actualiza una promoción; enviar `"active": false` para desactivarla. Si se omite `active`, conserva el estado actual al actualizar.
+- `GET /api/promotions/active`: devuelve las promociones vigentes en este momento; las fechas se interpretan con inicio inclusivo y fin exclusivo.
+
+El cuerpo de creación y actualización usa `name`, `discountPercentage`, `startsAt`,
+`endsAt` y `productIds`. `active` es opcional (nuevo: activo por defecto). El
+descuento acepta valores mayores que 0 y hasta 50, con un máximo de dos decimales.
+El precio con descuento se calcula y redondea a dos decimales con `HALF_UP`.
+Se rechazan intervalos superpuestos para un mismo producto con HTTP 409.
+
+```json
+{
+  "name": "Oferta de temporada",
+  "discountPercentage": 15.00,
+  "startsAt": "2026-11-01T00:00:00",
+  "endsAt": "2026-11-08T00:00:00",
+  "productIds": [1, 2]
+}
+```
+
+### Ajustes y movimientos de inventario
+- `POST /api/products/{id}/stock-adjustments` (solo ADMIN): registra un ajuste de stock y su movimiento histórico en una sola transacción.
+- `GET /api/products/{id}/stock-movements`: consulta el historial del producto, más reciente primero. No hay endpoints ordinarios para modificar o eliminar movimientos.
+
+El cuerpo del ajuste requiere una cantidad positiva, tipo `IN` o `OUT` y un motivo:
+
+```json
+{
+  "quantity": 5,
+  "movementType": "IN",
+  "reason": "Reposición de inventario"
+}
+```
+
+La respuesta del ajuste incluye el actor `admin`, la fecha y el stock resultante. El actor se guarda usando la fila activa `admin@demo.com` con rol `ADMIN` que ya existe en `users`, sin modificar el esquema. Si esa fila no existe, la petición se rechaza con HTTP 409. Las salidas que dejarían el stock negativo se rechazan con HTTP 409; una cantidad cero o negativa se rechaza con HTTP 400.
 
 ### Registrar producto
 - **Método:** `POST /api/products`
