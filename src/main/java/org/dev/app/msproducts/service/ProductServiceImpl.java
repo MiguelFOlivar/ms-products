@@ -171,18 +171,6 @@ public class ProductServiceImpl implements IProductService{
     }
 
     @Override
-    public ProductResponseDTO updateStock(Integer id, Integer stock) {
-        validarReglaStock(stock);
-
-        Product product = repository.findById(id)
-                .orElseThrow(() -> new ProductNotFoundException("No se encontró el producto con id " + id));
-
-        product.setStock(stock);
-        product = repository.save(product);
-
-        return responseDTO(product);
-    }
-    @Override
     public Integer getStockByProductId(Integer id) {
         Product product = repository.findById(id)
                 .orElseThrow(() -> new ProductNotFoundException("No se encontró el producto con id " + id));

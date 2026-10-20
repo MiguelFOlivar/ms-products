@@ -12,7 +12,6 @@ public interface IProductService {
     List<ProductResponseDTO> getInactiveProducts();
     ProductResponseDTO getProductById(Integer id);
     ProductResponseDTO updateProduct(Integer id, ProductRequestDTO dto);
-    ProductResponseDTO updateStock(Integer id, Integer stock);
     void deleteProduct(Integer id);
     Integer getStockByProductId(Integer id);
     List<ProductResponseDTO> filterProducts(Integer categoryId, ProductRequestDTO dto);

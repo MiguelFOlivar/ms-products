@@ -105,8 +105,6 @@ class ProductControllerTest {
         assertSame(product, controller.saveProduct(new ProductRegisterRequest()).getBody());
         when(service.getStockByProductId(1)).thenReturn(150);
         assertEquals(150, controller.getProductStock(1).getBody().get("stock"));
-        when(service.updateStock(1, 160)).thenReturn(product);
-        assertSame(product, controller.updateStock(1, 160).getBody());
         BulkPriceUpdateResponse bulkResponse = new BulkPriceUpdateResponse("ok", 1, List.of());
         when(service.bulkUpdatePrices(any(BulkPriceUpdateRequest.class))).thenReturn(bulkResponse);
         assertSame(bulkResponse, controller.bulkUpdatePrices(new BulkPriceUpdateRequest()).getBody());

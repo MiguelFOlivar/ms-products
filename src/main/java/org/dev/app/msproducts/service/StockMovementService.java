@@ -10,6 +10,7 @@ import org.dev.app.msproducts.model.Product;
 import org.dev.app.msproducts.model.StockMovement;
 import org.dev.app.msproducts.repository.AdminActorRepository;
 import org.dev.app.msproducts.repository.ProductRepository;
+import org.dev.app.msproducts.repository.StockMovementHistoryProjection;
 import org.dev.app.msproducts.repository.StockMovementRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,7 +38,8 @@ public class StockMovementService {
     }
 
     @Transactional
-    public StockMovementResponse adjustStock(Integer productId, StockAdjustmentRequest request) {
+    public StockMovementResponse adjustStock(Integer productId, StockAdjustmentRequest request,
+                                             String authenticatedEmail) {
         if (request == null || request.getQuantity() == null || request.getQuantity() <= 0) {
             throw new ProductException("La cantidad debe ser mayor que cero");
         }
@@ -68,7 +70,8 @@ public class StockMovementService {
                             + " unidades; stock actual: " + product.getStock());
         }
 
-        Long actorId = adminActorRepository.findDemoAdminId();
+        AdminActorRepository.ActorDetails actor =
+                adminActorRepository.findActiveAdminByEmail(authenticatedEmail);
         int updatedRows = productRepository.updateStockValue(productId, newStock);
         if (updatedRows != 1) {
             throw new ProductNotFoundException("No se pudo actualizar el producto con id " + productId);
@@ -79,11 +82,11 @@ public class StockMovementService {
                 request.getMovementType().name(),
                 request.getQuantity(),
                 request.getReason().trim(),
-                actorId,
+                actor.id(),
                 LocalDateTime.now(clock));
         StockMovement savedMovement = stockMovementRepository.save(movement);
 
-        return toResponse(savedMovement, newStock);
+        return toResponse(savedMovement, actor, newStock);
     }
 
     @Transactional(readOnly = true)
@@ -91,20 +94,36 @@ public class StockMovementService {
         if (!productRepository.existsById(productId)) {
             throw new ProductNotFoundException("No se encontró el producto con id " + productId);
         }
-        return stockMovementRepository.findByProductIdOrderByCreatedAtDescIdDesc(productId).stream()
-                .map(movement -> toResponse(movement, null))
+        return stockMovementRepository.findHistoryByProductId(productId).stream()
+                .map(this::toResponse)
                 .toList();
     }
 
-    private StockMovementResponse toResponse(StockMovement movement, Integer stockAfter) {
+    private StockMovementResponse toResponse(StockMovement movement,
+                                             AdminActorRepository.ActorDetails actor,
+                                             Integer stockAfter) {
         return new StockMovementResponse(
                 movement.getId(),
                 movement.getProductId(),
                 movement.getQuantity(),
                 movement.getMovementType(),
                 movement.getReason(),
-                "admin",
+                actor.id(),
+                actor.name(),
                 movement.getCreatedAt(),
                 stockAfter);
+    }
+
+    private StockMovementResponse toResponse(StockMovementHistoryProjection movement) {
+        return new StockMovementResponse(
+                movement.getId(),
+                movement.getProductId(),
+                movement.getQuantity(),
+                movement.getMovementType(),
+                movement.getReason(),
+                movement.getActorId(),
+                movement.getActor(),
+                movement.getCreatedAt(),
+                null);
     }
 }

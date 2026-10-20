@@ -13,23 +13,26 @@ public class AdminActorRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public Long findDemoAdminId() {
+    public ActorDetails findActiveAdminByEmail(String email) {
         try {
             return jdbcTemplate.queryForObject(
                     """
-                    SELECT id_user
+                    SELECT id_user, CONCAT_WS(' ', name, paternal_lastname, maternal_lastname) AS full_name
                     FROM users
                     WHERE LOWER(email) = LOWER(?)
                       AND UPPER(role) = 'ADMIN'
                       AND is_active = TRUE
-                    ORDER BY id_user
-                    LIMIT 1
                     """,
-                    Long.class,
-                    "admin@demo.com");
+                    (resultSet, rowNum) -> new ActorDetails(
+                            resultSet.getLong("id_user"),
+                            resultSet.getString("full_name")),
+                    email);
         } catch (EmptyResultDataAccessException ex) {
             throw new StockMovementActorNotFoundException(
-                    "No existe un usuario ADMIN activo (admin@demo.com) en la tabla users");
+                    "No existe un usuario ADMIN activo para el correo autenticado: " + email);
         }
+    }
+
+    public record ActorDetails(Long id, String name) {
     }
 }

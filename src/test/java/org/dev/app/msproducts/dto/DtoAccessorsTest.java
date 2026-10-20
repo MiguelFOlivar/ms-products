@@ -191,13 +191,14 @@ class DtoAccessorsTest {
         assertEquals("Reposición", adjustment.getReason());
 
         StockMovementResponse movement = new StockMovementResponse(
-                9L, 7, 4, "IN", "Reposición", "admin", startsAt, 104);
+                9L, 7, 4, "IN", "Reposición", 10L, "Admin Demo", startsAt, 104);
         assertEquals(9L, movement.getId());
         assertEquals(7, movement.getProductId());
         assertEquals(4, movement.getQuantity());
         assertEquals("IN", movement.getMovementType());
         assertEquals("Reposición", movement.getReason());
-        assertEquals("admin", movement.getActor());
+        assertEquals(10L, movement.getActorId());
+        assertEquals("Admin Demo", movement.getActor());
         assertEquals(startsAt, movement.getCreatedAt());
         assertEquals(104, movement.getStockAfter());
     }
