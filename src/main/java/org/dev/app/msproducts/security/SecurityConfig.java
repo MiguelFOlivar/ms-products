@@ -41,16 +41,26 @@ public class SecurityConfig {
 
     @Bean
     public UserDetailsService userDetailsService() {
-        UserDetails admin = User.withUsername("admin")
+        UserDetails admin = User.withUsername("admin.principal@example.com")
                 .password("{noop}admin123")
                 .roles("ADMIN")
                 .build();
 
-        UserDetails client = User.withUsername("client")
+        UserDetails secondadmin = User.withUsername("admin.dos@example.com")
+                .password("{noop}admin321")
+                .roles("ADMIN")
+                .build();
+
+        UserDetails client = User.withUsername("cliente1@demo.com")
                 .password("{noop}client123")
                 .roles("CLIENT")
                 .build();
 
-        return new InMemoryUserDetailsManager(admin, client);
+        UserDetails secondClient = User.withUsername("cliente2@demo.com")
+                .password("{noop}client123")
+                .roles("CLIENT")
+                .build();
+
+        return new InMemoryUserDetailsManager(admin, secondadmin, client, secondClient);
     }
 }

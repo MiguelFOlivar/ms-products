@@ -12,18 +12,20 @@ public class StockMovementResponse {
     private final Integer quantity;
     private final String movementType;
     private final String reason;
+    private final Long actorId;
     private final String actor;
     private final LocalDateTime createdAt;
     private final Integer stockAfter;
 
     public StockMovementResponse(Long id, Integer productId, Integer quantity,
-                                 String movementType, String reason, String actor,
+                                 String movementType, String reason, Long actorId, String actor,
                                  LocalDateTime createdAt, Integer stockAfter) {
         this.id = id;
         this.productId = productId;
         this.quantity = quantity;
         this.movementType = movementType;
         this.reason = reason;
+        this.actorId = actorId;
         this.actor = actor;
         this.createdAt = createdAt;
         this.stockAfter = stockAfter;
@@ -51,6 +53,10 @@ public class StockMovementResponse {
 
     public String getActor() {
         return actor;
+    }
+
+    public Long getActorId() {
+        return actorId;
     }
 
     public LocalDateTime getCreatedAt() {

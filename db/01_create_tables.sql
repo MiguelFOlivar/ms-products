@@ -69,21 +69,24 @@ CREATE TABLE IF NOT EXISTS promotion_products (
 -- Tabla del otro equipo (simulada, no la usamos en nuestra API)
 -- Debe crearse ANTES de stock_movements (que la referencia)
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS users (
-                                     id_user BIGINT NOT NULL AUTO_INCREMENT,
-                                     name VARCHAR(100) NOT NULL,
+CREATE TABLE IF NOT EXISTS ecommerce.users (
+                                               id_user BIGINT NOT NULL AUTO_INCREMENT,
+                                               user_identifier VARCHAR(20) NULL,
+    name VARCHAR(100) NOT NULL,
     paternal_lastname VARCHAR(100) NOT NULL,
     maternal_lastname VARCHAR(100) NOT NULL,
     email VARCHAR(150) NOT NULL,
     password VARCHAR(255) NOT NULL,
-    role VARCHAR(45) NOT NULL DEFAULT 'CLIENTE',
+    role VARCHAR(45) NOT NULL DEFAULT 'USUARIO',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    autenticado BOOLEAN NOT NULL DEFAULT FALSE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    failed_login_attempts INT NOT NULL DEFAULT 0,
+    locked_until DATETIME NULL,
 
     PRIMARY KEY (id_user),
-    CONSTRAINT uk_users_email UNIQUE (email)
-    ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+    CONSTRAINT uk_users_email UNIQUE (email),
+    CONSTRAINT uk_users_user_identifier UNIQUE (user_identifier)
+    ) ENGINE = InnoDB;
 
 -- -----------------------------------------------------
 -- Movimientos de inventario (depende de products y users)
@@ -123,8 +126,9 @@ CREATE TABLE IF NOT EXISTS price_history (
 -- Datos simulados para users (contraseñas FALSAS, no son hashes reales)
 -- -----------------------------------------------------
 INSERT IGNORE INTO users
-    (name, paternal_lastname, maternal_lastname, email, password, role)
+    (user_identifier, name, paternal_lastname, maternal_lastname, email, password, role, is_active,failed_login_attempts,locked_until)
 VALUES
-    ('Admin',  'Demo', 'Simulado', 'admin@demo.com',    'admin123',   'ADMIN'),
-    ('Cliente','Demo', 'Uno',      'cliente1@demo.com', 'cliente123', 'CLIENTE'),
-    ('Cliente','Demo', 'Dos',      'cliente2@demo.com', 'cliente123', 'CLIENTE')
+    ('ADM-001-A', 'Ana', 'García', 'López', 'admin.principal@example.com', 'admin123', 'ADMIN', TRUE, 0, NULL),
+    ('ADM-002-A', 'Carlos', 'Hernández', 'Martínez', 'admin.dos@example.com', 'admin321', 'ADMIN', TRUE, 0, NULL),
+    ('USR-005-I', 'Laura', 'Flores', 'Morales', 'cliente.uno@example.com', 'client123', 'CLIENTE', TRUE, 0, NULL),
+    ('USR-006-I', 'Miguel', 'Vargas', 'Castro', 'cliente.dos@example.com', 'cliente321', 'CLIENTE', TRUE, 0, NULL);

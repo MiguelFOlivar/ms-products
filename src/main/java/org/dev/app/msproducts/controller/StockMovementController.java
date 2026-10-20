@@ -7,6 +7,7 @@ import org.dev.app.msproducts.service.StockMovementService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,9 +31,10 @@ public class StockMovementController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<StockMovementResponse> adjustStock(
             @PathVariable Integer id,
-            @Valid @RequestBody StockAdjustmentRequest request) {
+            @Valid @RequestBody StockAdjustmentRequest request,
+            Authentication authentication) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(stockMovementService.adjustStock(id, request));
+                .body(stockMovementService.adjustStock(id, request, authentication.getName()));
     }
 
     @GetMapping("/stock-movements")

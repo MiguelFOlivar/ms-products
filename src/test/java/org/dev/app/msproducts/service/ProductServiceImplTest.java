@@ -164,40 +164,6 @@ class ProductServiceImplTest {
         verify(repository, never()).save(any(Product.class));
     }
 
-    @Test
-    void updateStockPersistsAndReturnsUpdatedStock() {
-        Product product = createProduct(1, true, 150);
-        when(repository.findById(1)).thenReturn(Optional.of(product));
-        when(repository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        ProductResponseDTO result = service.updateStock(1, 150);
-
-        assertEquals(150, result.getStock());
-        verify(repository).save(product);
-    }
-
-    @Test
-    void updateStockThrowsForNegativeStock() {
-        assertThrows(ProductException.class, () -> service.updateStock(1, -1));
-        verify(repository, never()).findById(1);
-        verify(repository, never()).save(any(Product.class));
-    }
-
-    @Test
-    void updateStockThrowsForNullStock() {
-        assertThrows(ProductException.class, () -> service.updateStock(1, null));
-        verify(repository, never()).findById(1);
-        verify(repository, never()).save(any(Product.class));
-    }
-
-    @Test
-    void updateStockThrowsWhenProductDoesNotExist() {
-        when(repository.findById(1)).thenReturn(Optional.empty());
-
-        assertThrows(ProductNotFoundException.class, () -> service.updateStock(1, 150));
-        verify(repository, never()).save(any(Product.class));
-    }
-
     private Product createProduct(Integer id, boolean active, int stock) {
         Category category = new Category();
         category.setId(1);

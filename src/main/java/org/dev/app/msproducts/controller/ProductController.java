@@ -60,13 +60,6 @@ public class ProductController {
                 "stock", stock
         ));
     }
-    @PatchMapping("/{id}/stock")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ProductResponseDTO> updateStock(@PathVariable Integer id,
-                                                          @RequestParam Integer stock) {
-        return ResponseEntity.ok(service.updateStock(id, stock));
-    }
-
     @PatchMapping("/prices/bulk")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BulkPriceUpdateResponse> bulkUpdatePrices(

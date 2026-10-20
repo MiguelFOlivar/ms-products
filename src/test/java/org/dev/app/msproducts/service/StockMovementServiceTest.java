@@ -11,6 +11,7 @@ import org.dev.app.msproducts.model.Product;
 import org.dev.app.msproducts.model.StockMovement;
 import org.dev.app.msproducts.repository.AdminActorRepository;
 import org.dev.app.msproducts.repository.ProductRepository;
+import org.dev.app.msproducts.repository.StockMovementHistoryProjection;
 import org.dev.app.msproducts.repository.StockMovementRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -62,7 +63,8 @@ class StockMovementServiceTest {
     @Test
     void recordsStockEntryAndUsesAdminAsActor() {
         when(productRepository.findByIdForUpdate(12)).thenReturn(Optional.of(product));
-        when(adminActorRepository.findDemoAdminId()).thenReturn(1L);
+        when(adminActorRepository.findActiveAdminByEmail("admin@demo.com"))
+                .thenReturn(new AdminActorRepository.ActorDetails(1L, "Admin Demo Simulado"));
         when(productRepository.updateStockValue(12, 155)).thenReturn(1);
         when(stockMovementRepository.save(any(StockMovement.class))).thenAnswer(invocation -> {
             StockMovement saved = invocation.getArgument(0);
@@ -70,11 +72,12 @@ class StockMovementServiceTest {
             return saved;
         });
 
-        StockMovementResponse response = service.adjustStock(12, request(5, StockMovementType.IN));
+        StockMovementResponse response = service.adjustStock(12, request(5, StockMovementType.IN), "admin@demo.com");
 
         assertEquals(155, response.getStockAfter());
         assertEquals("IN", response.getMovementType());
-        assertEquals("admin", response.getActor());
+        assertEquals(1L, response.getActorId());
+        assertEquals("Admin Demo Simulado", response.getActor());
         assertEquals("Reposición", response.getReason());
         ArgumentCaptor<StockMovement> movementCaptor = ArgumentCaptor.forClass(StockMovement.class);
         verify(stockMovementRepository).save(movementCaptor.capture());
@@ -85,11 +88,12 @@ class StockMovementServiceTest {
     @Test
     void recordsValidStockExit() {
         when(productRepository.findByIdForUpdate(12)).thenReturn(Optional.of(product));
-        when(adminActorRepository.findDemoAdminId()).thenReturn(1L);
+        when(adminActorRepository.findActiveAdminByEmail("admin@demo.com"))
+                .thenReturn(new AdminActorRepository.ActorDetails(1L, "Admin Demo Simulado"));
         when(productRepository.updateStockValue(12, 130)).thenReturn(1);
         when(stockMovementRepository.save(any(StockMovement.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        StockMovementResponse response = service.adjustStock(12, request(20, StockMovementType.OUT));
+        StockMovementResponse response = service.adjustStock(12, request(20, StockMovementType.OUT), "admin@demo.com");
 
         assertEquals(130, response.getStockAfter());
         assertEquals("OUT", response.getMovementType());
@@ -100,7 +104,7 @@ class StockMovementServiceTest {
         when(productRepository.findByIdForUpdate(12)).thenReturn(Optional.of(product));
 
         assertThrows(InsufficientStockException.class,
-                () -> service.adjustStock(12, request(151, StockMovementType.OUT)));
+                () -> service.adjustStock(12, request(151, StockMovementType.OUT), "admin@demo.com"));
 
         verify(productRepository, never()).updateStockValue(anyInt(), anyInt());
         verifyNoInteractions(stockMovementRepository, adminActorRepository);
@@ -109,7 +113,7 @@ class StockMovementServiceTest {
     @Test
     void rejectsZeroQuantityWithoutWriting() {
         assertThrows(ProductException.class,
-                () -> service.adjustStock(12, request(0, StockMovementType.IN)));
+                () -> service.adjustStock(12, request(0, StockMovementType.IN), "admin@demo.com"));
 
         verify(productRepository, never()).updateStockValue(anyInt(), anyInt());
         verifyNoInteractions(stockMovementRepository, adminActorRepository);
@@ -120,7 +124,7 @@ class StockMovementServiceTest {
         when(productRepository.findByIdForUpdate(404)).thenReturn(Optional.empty());
 
         assertThrows(ProductNotFoundException.class,
-                () -> service.adjustStock(404, request(1, StockMovementType.IN)));
+                () -> service.adjustStock(404, request(1, StockMovementType.IN), "admin@demo.com"));
 
         verifyNoInteractions(adminActorRepository, stockMovementRepository);
     }
@@ -128,13 +132,14 @@ class StockMovementServiceTest {
     @Test
     void movementWriteFailurePropagatesAfterStockUpdateForTransactionalRollback() {
         when(productRepository.findByIdForUpdate(12)).thenReturn(Optional.of(product));
-        when(adminActorRepository.findDemoAdminId()).thenReturn(1L);
+        when(adminActorRepository.findActiveAdminByEmail("admin@demo.com"))
+                .thenReturn(new AdminActorRepository.ActorDetails(1L, "Admin Demo Simulado"));
         when(productRepository.updateStockValue(12, 155)).thenReturn(1);
         when(stockMovementRepository.save(any(StockMovement.class)))
                 .thenThrow(new IllegalStateException("Simulated persistence failure"));
 
         IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> service.adjustStock(12, request(5, StockMovementType.IN)));
+                () -> service.adjustStock(12, request(5, StockMovementType.IN), "admin@demo.com"));
 
         assertEquals("Simulated persistence failure", exception.getMessage());
         verify(productRepository).updateStockValue(12, 155);
@@ -144,41 +149,48 @@ class StockMovementServiceTest {
     @Test
     void listsMovementHistoryForExistingProduct() {
         when(productRepository.existsById(12)).thenReturn(true);
-        when(stockMovementRepository.findByProductIdOrderByCreatedAtDescIdDesc(12))
-                .thenReturn(List.of(new StockMovement(
-                        12, "IN", 5, "Reposición", 1L,
-                        LocalDateTime.parse("2026-10-19T12:00:00"))));
+        StockMovementHistoryProjection movement = mock(StockMovementHistoryProjection.class);
+        when(movement.getId()).thenReturn(20L);
+        when(movement.getProductId()).thenReturn(12);
+        when(movement.getQuantity()).thenReturn(5);
+        when(movement.getMovementType()).thenReturn("IN");
+        when(movement.getReason()).thenReturn("Reposición");
+        when(movement.getActorId()).thenReturn(1L);
+        when(movement.getActor()).thenReturn("Admin Demo Simulado");
+        when(movement.getCreatedAt()).thenReturn(LocalDateTime.parse("2026-10-19T12:00:00"));
+        when(stockMovementRepository.findHistoryByProductId(12)).thenReturn(List.of(movement));
 
         List<StockMovementResponse> result = service.getStockMovements(12);
 
         assertEquals(1, result.size());
-        assertEquals("admin", result.get(0).getActor());
+        assertEquals(1L, result.get(0).getActorId());
+        assertEquals("Admin Demo Simulado", result.get(0).getActor());
         assertEquals("IN", result.get(0).getMovementType());
     }
 
     @Test
     void rejectsMissingOrInvalidAdjustmentFieldsBeforeAccessingRepositories() {
-        assertThrows(ProductException.class, () -> service.adjustStock(12, null));
+        assertThrows(ProductException.class, () -> service.adjustStock(12, null, "admin@demo.com"));
 
         StockAdjustmentRequest missingQuantity = request(1, StockMovementType.IN);
         missingQuantity.setQuantity(null);
-        assertThrows(ProductException.class, () -> service.adjustStock(12, missingQuantity));
+        assertThrows(ProductException.class, () -> service.adjustStock(12, missingQuantity, "admin@demo.com"));
         assertThrows(ProductException.class,
-                () -> service.adjustStock(12, request(-1, StockMovementType.IN)));
+                () -> service.adjustStock(12, request(-1, StockMovementType.IN), "admin@demo.com"));
 
         StockAdjustmentRequest missingType = request(1, StockMovementType.IN);
         missingType.setMovementType(null);
-        assertThrows(ProductException.class, () -> service.adjustStock(12, missingType));
+        assertThrows(ProductException.class, () -> service.adjustStock(12, missingType, "admin@demo.com"));
 
         StockAdjustmentRequest missingReason = request(1, StockMovementType.IN);
         missingReason.setReason("  ");
-        assertThrows(ProductException.class, () -> service.adjustStock(12, missingReason));
+        assertThrows(ProductException.class, () -> service.adjustStock(12, missingReason, "admin@demo.com"));
         StockAdjustmentRequest nullReason = request(1, StockMovementType.IN);
         nullReason.setReason(null);
-        assertThrows(ProductException.class, () -> service.adjustStock(12, nullReason));
+        assertThrows(ProductException.class, () -> service.adjustStock(12, nullReason, "admin@demo.com"));
         StockAdjustmentRequest longReason = request(1, StockMovementType.IN);
         longReason.setReason("x".repeat(256));
-        assertThrows(ProductException.class, () -> service.adjustStock(12, longReason));
+        assertThrows(ProductException.class, () -> service.adjustStock(12, longReason, "admin@demo.com"));
 
         verifyNoInteractions(productRepository, stockMovementRepository, adminActorRepository);
     }
@@ -189,7 +201,7 @@ class StockMovementServiceTest {
         when(productRepository.findByIdForUpdate(12)).thenReturn(Optional.of(product));
 
         assertThrows(ProductException.class,
-                () -> service.adjustStock(12, request(1, StockMovementType.IN)));
+                () -> service.adjustStock(12, request(1, StockMovementType.IN), "admin@demo.com"));
 
         verifyNoInteractions(stockMovementRepository, adminActorRepository);
     }
@@ -197,11 +209,12 @@ class StockMovementServiceTest {
     @Test
     void reportsFailedConditionalStockUpdate() {
         when(productRepository.findByIdForUpdate(12)).thenReturn(Optional.of(product));
-        when(adminActorRepository.findDemoAdminId()).thenReturn(1L);
+        when(adminActorRepository.findActiveAdminByEmail("admin@demo.com"))
+                .thenReturn(new AdminActorRepository.ActorDetails(1L, "Admin Demo Simulado"));
         when(productRepository.updateStockValue(12, 155)).thenReturn(0);
 
         assertThrows(ProductNotFoundException.class,
-                () -> service.adjustStock(12, request(5, StockMovementType.IN)));
+                () -> service.adjustStock(12, request(5, StockMovementType.IN), "admin@demo.com"));
 
         verifyNoInteractions(stockMovementRepository);
     }
@@ -212,7 +225,7 @@ class StockMovementServiceTest {
         assertThrows(ProductNotFoundException.class, () -> service.getStockMovements(404));
 
         when(productRepository.existsById(12)).thenReturn(true);
-        when(stockMovementRepository.findByProductIdOrderByCreatedAtDescIdDesc(12)).thenReturn(List.of());
+        when(stockMovementRepository.findHistoryByProductId(12)).thenReturn(List.of());
         assertTrue(service.getStockMovements(12).isEmpty());
     }
 
